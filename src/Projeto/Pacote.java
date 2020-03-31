@@ -21,14 +21,16 @@ public class Pacote {
     String ipv4Origem;       // Setamos no inicio
     String ipv4Destino;      // Setamos no inicio
     byte[] dados;
-    byte[] DividindoDados;
+    byte[] RestanteDosDados;
+    byte[] mensagemCompleta;
+    String primeiraParteMensagem;
     
-    
-    public Pacote(int numMensagem, Object mensagem, String ipv4Origem, String ipv4Destino) {
+    public Pacote(int numMensagem, Object mensagem, String ipv4Origem, String ipv4Destino, int protocolo) {
 
         VER = 15; // 11111
         Hlen = 5;
         String message = (String) mensagem;
+        primeiraParteMensagem = message;            // Inicialmente a mensagem nao é dividida;
         dados = message.getBytes(StandardCharsets.UTF_8); // Pega a mensagem e transforma em bytes
         byte hlen = (byte) (Hlen * 4);
         comprimentoTotal = new byte[Hlen * 4 + dados.length];        
@@ -39,6 +41,9 @@ public class Pacote {
         isLast = true; // 0
         this.ipv4Origem = ipv4Origem;
         this.ipv4Destino = ipv4Destino;
+        this.protocolo = protocolo;    //  1 == ICMP, 2== IGMP, 6== TCP, 17 == UDP, 89 == OSPF
+                                       // pagina 588
+        this.mensagemCompleta =  message.getBytes(StandardCharsets.UTF_8);
         
     } // FALTA COLOCAR O HLEN + OS DADOS DENTRO DA ARRAY COMPRIMENTO TOTAL
 
@@ -48,7 +53,6 @@ public class Pacote {
         ArrayList<Pacote> p = new ArrayList<>();
         int TotalDeDados = 0;
         int comprimentoAtual = this.comprimentoTotal.length;
-        String mensagem = new String(dados, StandardCharsets.UTF_8);
         Pacote pacote;
 
         if (!this.canFragment) { // Nao posso fragmentar o pacote
@@ -58,7 +62,7 @@ public class Pacote {
         } else {      // Preciso fragmentar
             int comprimentoInicial = comprimentoAtual;
             while (comprimentoAtual > 1500) {
-                pacote = new Pacote(this.getIdentificacao(), mensagem,this.ipv4Origem,this.ipv4Destino);
+                pacote = new Pacote(this.getIdentificacao(), primeiraParteMensagem,this.ipv4Origem,this.ipv4Destino,this.protocolo);
                 
                 if (PrimeiroPacoteDaFragmentação ) {
                                   
@@ -67,7 +71,9 @@ public class Pacote {
                     pacote.setIsLast(false);
                     PrimeiroPacoteDaFragmentação = false;
                     pacote.setComprimentoTotal(1500, this.Hlen);
-                         
+                    
+                    
+                    
                 }else{ 
                     
                     pacote.setOffSet((TotalDeDados /8) ); // Divisão Inteira
@@ -80,23 +86,55 @@ public class Pacote {
                 } 
             }    // Se saiu do while significa que é o último pacote da fragmentação
             
-            pacote = new Pacote(this.getIdentificacao(), mensagem,this.ipv4Origem,this.ipv4Destino);
+            pacote = new Pacote(this.getIdentificacao(), primeiraParteMensagem,this.ipv4Origem,this.ipv4Destino,this.protocolo);
             pacote.setComprimentoTotal(comprimentoAtual, this.Hlen );	
             pacote.setOffSet((TotalDeDados /8) ); // Divisão Inteira
             pacote.setCanFragment(true);
             pacote.setIsLast(true);
             p.add(pacote);
+            System.out.println("Fragmentação deu certo: " + (TotalDeDados == this.mensagemCompleta.length));
         } // fora do else
         return p;
     }
-
+    
+    public void setComprimentoTotal(int MTU, int hlen) {
+        
+        int soDados = MTU - hlen*4;        
+        
+        RestanteDosDados = new byte[dados.length - soDados];
+        int j=0;
+        byte [] DadosPacoteAtual = new byte[MTU];
+        byte [] comprimentoTotalAtual = new byte[MTU];
+        
+        for(int i=0; i < comprimentoTotal.length; i ++){
+            
+            if(i>= soDados){ // Dados para os proximo pacotes da fragmentação
+                
+                RestanteDosDados[j] = this.comprimentoTotal[i];                
+                j++;
+                
+            }else if ( i >= hlen*4 && i < soDados){ // pacote para esse fragmentação
+                
+                DadosPacoteAtual[i] = this.comprimentoTotal[i];
+                this.dados = DadosPacoteAtual;
+            }
+            if(i < soDados){
+                
+                 comprimentoTotalAtual[i] = this.comprimentoTotal[i];
+            }
+        }              
+        this.primeiraParteMensagem = new String(DadosPacoteAtual,StandardCharsets.UTF_8);
+        this.dados = DadosPacoteAtual;
+        this.comprimentoTotal = comprimentoTotalAtual;
+        
+        
+    }
+    
     public void Checksum() {
 
     }
 
-    public int getProtocolo() {
-        return protocolo;
-    }
+
 
     public String getIpv4Origem() {
         return ipv4Origem;
@@ -126,28 +164,6 @@ public class Pacote {
         return comprimentoTotal;
     }
 
-    public void setComprimentoTotal(int MTU, int hlen) {
-        
-        int soDados = MTU - hlen*4;
-        
-        
-        DividindoDados = new byte[dados.length - soDados];
-        int j=0;
-        byte [] DadosDivididos = new byte[MTU];
-        for(int i=0; i < comprimentoTotal.length; i ++){
-            
-            if(i>= soDados){ // Dados para os proximo pacotes da fragmentação
-                
-                DividindoDados[j] = comprimentoTotal[i];                
-            
-            }else if ( i >= hlen*4 && i < soDados){ // pacote para esse fragmentação
-                
-                DadosDivididos[i] = comprimentoTotal[i];   
-            }            
-        } 
-        this.comprimentoTotal = DadosDivididos;
-    }
-
     public boolean isCanFragment() {
         return canFragment;
     }
@@ -175,6 +191,17 @@ public class Pacote {
     public void setIsLast(boolean isLast) {
         this.isLast = isLast;
     }
-    
 
+    public void setProtocolo(int protocolo) {
+        this.protocolo = protocolo;
+    }
+    
+    public int getProtocolo() {
+        return protocolo;
+    }
+    
+    public byte[] getMensagemCompleta() {
+        return mensagemCompleta;
+    }
+     
 }

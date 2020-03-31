@@ -10,6 +10,7 @@ class CamadaRedes {
     int numeroDaMensagem;
     String ipv4;
     String mascara;
+    int protocolo;
     
     public CamadaRedes(String ipv4, int valor){
         
@@ -18,16 +19,14 @@ class CamadaRedes {
         pegarMascara(valor);        
     }
     
-    
-    
-    
-    void ReceiveTransporte(Object mensagem) { // Colocar essa mensagem em um pacote
+    void ReceiveTransporte(Object mensagem, int protocolo) { // Colocar essa mensagem em um pacote
         
         numeroDaMensagem ++; // Recebi uma mensagem
-        String menssage = (String) mensagem;
-        byte[] b = menssage.getBytes(StandardCharsets.UTF_8);
+        String message = (String) mensagem;
+        byte[] b = message.getBytes(StandardCharsets.UTF_8);
         this.SendEnlace(b);
-        
+        this.protocolo = protocolo; // UDP, TCP/IP protocolos que vem da camda de transporte
+                                    // E passar para o pacote
     }
     
     void SendTransporte(Object mensagem){
@@ -36,7 +35,7 @@ class CamadaRedes {
     }
     
     void SendEnlace(Object mensagem){ // Mandar o pacote ipv4 com fragmentacao
-        
+                                      // Criar O pacote
         
         this.enlace.ReceiveRedes(mensagem);
         

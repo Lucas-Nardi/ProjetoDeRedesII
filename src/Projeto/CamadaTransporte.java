@@ -8,7 +8,7 @@ class CamadaTransporte {
         
     void ReceiveAplicacao(Object mensagem){  // Recebe Algo da cadama de Aplicação
         
-        this.redes.ReceiveTransporte(mensagem);
+        this.SendRedes(mensagem); // Manda para a camda de redes;
     }
     void SendAplicacao(Object mensagem){  // Envia Algo para a cadama de Aplicação
         
@@ -22,7 +22,7 @@ class CamadaTransporte {
     
     void SendRedes(Object mensagem){ // Recebeu uma mensagem da camada de aplicacao e manda para a camada de redes
         
-        this.redes.ReceiveTransporte(mensagem);
+        this.redes.ReceiveTransporte(mensagem,1); // Mandar o Protocolo para a camda de redes
     }
 
     public CamadaAplicacao getAplicacao() {
