@@ -2,7 +2,7 @@ package Projeto;
 
 import java.util.ArrayList;
 
-public class CamadaFisica implements Observable{
+public class CamadaFisica implements Observable{ // É o barramento
 
     ArrayList <Observer> observadores;
     //ArrayList <Pacote> pacotes;

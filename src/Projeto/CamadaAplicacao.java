@@ -7,12 +7,7 @@ import java.nio.charset.StandardCharsets;
 class CamadaAplicacao {
 
     CamadaTransporte transporte;
-
-    public CamadaAplicacao(){
-        
-        this.transporte = new CamadaTransporte();
-    }
-
+    
     void SendTransporte(Object mensagem) {
         
         this.transporte.ReceiveAplicacao(mensagem);

@@ -10,48 +10,68 @@ public class Pacote {
     int Hlen;
     byte Servico;            // Setar como tudo zero
     byte[] comprimentoTotal; // HLEN * 4
-    int identificacao;       // 2Bytes
+    byte[] dados;
+    byte[] RestanteDosDados; // Restante dos dados para os proximos pacotes
+    byte[] mensagemCompleta; // Mensagem inicial (completa) 
+    byte[] checksum;         // 2 Bytes , precisamos calcular
+    int identificacao;       // 2 Bytes
     int reservado;           // Compoem o flag 
     boolean canFragment;     // Compoem o flag -- pode ser 0 ou 1
     boolean isLast;          // Compoem o flag -- pode ser 0 ou 1
-    int offSet;
+    int offSet;              // Inicialmente é 0
     int tempoDeVida;         // Começa com um valor fixo
     int protocolo;           // Começa com um valor fixo (Pagina 588)
-    byte[] checksum;         // 2 Bytes , precisamos calcular
     String ipv4Origem;       // Setamos no inicio
     String ipv4Destino;      // Setamos no inicio
-    byte[] dados;
-    byte[] RestanteDosDados;
-    byte[] mensagemCompleta;
     String primeiraParteMensagem;
-    String restanteDosDados;
-    
-    
-    public Pacote(int numMensagem, Object mensagem, String ipv4Origem, String ipv4Destino, int protocolo) {
+    String restanteDaMensagem;
 
-        VER = 15; // 11111
-        Hlen = 5;
-        String message = (String) mensagem;
-        primeiraParteMensagem = message;            // Inicialmente a mensagem nao é dividida;
-        restanteDosDados = message;
-        dados = message.getBytes(StandardCharsets.UTF_8); // Pega a mensagem e transforma em bytes
-        byte hlen = (byte) (Hlen * 4);
-        comprimentoTotal = new byte[Hlen * 4 + dados.length];
-        identificacao = numMensagem;
-        reservado = 0;
-        offSet = 0;
-        canFragment = true; // 0
-        isLast = true; // 0
+    public Pacote(int numMensagem, Object mensagem, String ipv4Origem, String ipv4Destino, int protocolo) {
+        
+        this.VER = 15;  // 11111
+        this.Hlen = 5;
+        String message = (String) mensagem;        
+        this.primeiraParteMensagem = message;            ;
+        this.restanteDaMensagem = message;
+        
+        this.dados = message.getBytes(StandardCharsets.UTF_8); // Pega a mensagem e transforma em bytes        
+        this.RestanteDosDados = dados;                         // Mensagem nao fragmentada logo, RestanteDosDados é mensagem original
+        this.mensagemCompleta = dados;                         // Salva Mensagem Original
+        this.comprimentoTotal = new byte[Hlen * 4 + dados.length];        
+        
+        
+        this.identificacao = numMensagem;
+        this.reservado = 0;
+        this.offSet = 0;
+        this.canFragment = true; // 0
+        this.isLast = true; // 0
         this.ipv4Origem = ipv4Origem;
         this.ipv4Destino = ipv4Destino;
-        this.protocolo = protocolo;    //  1 == ICMP, 2== IGMP, 6== TCP, 17 == UDP, 89 == OSPF
-        // pagina 588
-        this.mensagemCompleta = message.getBytes(StandardCharsets.UTF_8);
+        this.protocolo = protocolo;    //  1 == ICMP, 2== IGMP, 6== TCP, 17 == UDP, 89 == OSPF  -- pagina 588
+        
+        
 
     } // FALTA COLOCAR O HLEN + OS DADOS DENTRO DA ARRAY COMPRIMENTO TOTAL
-
+    
+    public void PreencherComprimentoTotal(){
+        int j = 0;
+        int i;
+        
+        for(i=0; i < this.comprimentoTotal.length; i ++){
+            if(i < Hlen *4){
+                
+               comprimentoTotal[i] = 0;
+                
+            }else{
+                comprimentoTotal[i] =  this.dados[j];                
+                j++;
+            }            
+        }        
+    }
+    
     public ArrayList<Pacote> Fragmentar() {
-
+        
+                
         boolean PrimeiroPacoteDaFragmentação = true;
         ArrayList<Pacote> p = new ArrayList<>();
         int TotalDeDados = 0;
@@ -60,91 +80,199 @@ public class Pacote {
 
         if (!this.canFragment) { // Nao posso fragmentar o pacote
             p.add(this);
-        } else if (this.comprimentoTotal.length <= 1500) {  // MTU == 1500 bytes
+        } else if (this.comprimentoTotal.length <= 22) {  // MTU == 1500 bytes
             p.add(this);
         } else {      // Preciso fragmentar
-            int comprimentoInicial = comprimentoAtual;
-            while (comprimentoAtual > 1500) {
-                pacote = new Pacote(this.getIdentificacao(), restanteDosDados, this.ipv4Origem, this.ipv4Destino, this.protocolo);
-
+            
+            int offSet = 0;  
+            
+            while (comprimentoAtual > 22) {
+                
+                pacote = new Pacote(this.identificacao, this.restanteDaMensagem,this.ipv4Origem, this.ipv4Destino, this.protocolo);
+                
+                
                 if (PrimeiroPacoteDaFragmentação) {
-
+                    
                     pacote.setOffSet(this.offSet);
                     pacote.setCanFragment(true);
                     pacote.setIsLast(false);
                     PrimeiroPacoteDaFragmentação = false;
-                    pacote.setComprimentoTotal(1500, this.Hlen);
+                    this.setDividirDados(22, this.Hlen,pacote);
+                     
+                    
+                } else { 
+                    
+                    if (TotalDeDados % 8 == 0) {
 
-                } else {
+                        offSet = TotalDeDados / 8;
+                    
+                    } else {
+                        
 
-                    pacote.setOffSet((TotalDeDados / 8)); // Divisão Inteira
+                        offSet = TotalDeDados % 8;
+                    }
+                    pacote.setOffSet(offSet); // Divisão Inteira
                     pacote.setCanFragment(true);
                     pacote.setIsLast(false);
-                    pacote.setComprimentoTotal(1500, this.Hlen);
-                    p.add(pacote);                    
-                }
-                TotalDeDados = TotalDeDados + (1500 - this.Hlen * 4);
-                comprimentoAtual = comprimentoAtual - ((1500 - this.Hlen * 4) + (this.Hlen * 4));
+                    this.setDividirDados(22, this.Hlen,pacote);                   
+                    
+                }                
+                p.add(pacote);
+                TotalDeDados = TotalDeDados + (22 - this.Hlen * 4);
+                comprimentoAtual = (comprimentoAtual - (22 - this.Hlen * 4) ) ;
+                
             }    // Se saiu do while significa que é o último pacote da fragmentação
+            if (TotalDeDados % 8 == 0) {
 
-            pacote = new Pacote(this.getIdentificacao(), restanteDosDados, this.ipv4Origem, this.ipv4Destino, this.protocolo);
+                offSet = TotalDeDados / 8;
+            } else {
+
+                offSet = TotalDeDados % 8;
+            }
+            
+            pacote = new Pacote(this.identificacao, restanteDaMensagem,this.ipv4Origem, this.ipv4Destino, this.protocolo);
             pacote.setCanFragment(true);
             pacote.setIsLast(true);
-            pacote.setComprimentoTotal(comprimentoAtual, this.Hlen);
-            pacote.setOffSet((TotalDeDados / 8)); // Divisão Inteira
+            pacote.setRestanteDaMensagem("Fim da mensagem");
+            pacote.setPrimeiraParteMensagem(this.restanteDaMensagem);
+            pacote.setDados(this.RestanteDosDados);
+            pacote.setComprimentoTotal(this.comprimentoTotal);
+            pacote.setOffSet(offSet); // Divisão Inteira            
             p.add(pacote);
-            System.out.println("Fragmentação deu certo: " + (TotalDeDados == this.mensagemCompleta.length));
+           
+            
         } // fora do else
         return p;
     }
 
-    public void setComprimentoTotal(int MTU, int hlen) {
+    public void setDividirDados(int MTU, int hlen, Pacote p) {
 
-        if (!this.isLast) { // Se nao for o ultimo pacote, fragmentar as informações
-            
-            int soDados = MTU - hlen * 4;
+        if (!p.isLast) { // Se nao for o ultimo pacote, fragmentar as informações
 
-            RestanteDosDados = new byte[dados.length - soDados];
+            int soDados = MTU - hlen * 4; // QUANTOS DE DADOS POR PACOTE 
+                        
             int j = 0;
-            byte[] DadosPacoteAtual = new byte[MTU];
+            int k = 0;
+            byte[] DadosPacoteAtual = new byte[soDados];
             byte[] comprimentoTotalAtual = new byte[MTU];
-
+            byte[] dadosRestantes = new byte [this.RestanteDosDados.length - soDados];
+            byte[] comprimentoTotalProximoPacote = new byte[this.RestanteDosDados.length - soDados + hlen * 4];
+            String antes, depois;        
+                    
+           
+            System.out.println("");
+           
+            
             for (int i = 0; i < comprimentoTotal.length; i++) {
 
-                if (i >= soDados) { // Dados para os proximo pacotes da fragmentação
+                if (i >= hlen * 4  && i < hlen * 4 + soDados) { //  Cabeçalho < dados para pacote < dados restates  
+                    
+                    DadosPacoteAtual[k] = this.comprimentoTotal[i];                    
+                    k++;
+                    
 
-                    RestanteDosDados[j] = this.comprimentoTotal[i];
+                } else if (i >= (hlen * 4 + soDados) ) { // Restantes Dos dados
+                    
+                    
+                    dadosRestantes[j] = this.comprimentoTotal[i];                   
+                    comprimentoTotalProximoPacote[i-soDados] = this.comprimentoTotal[i];                   
                     j++;
-
-                } else if (i >= hlen * 4 && i < soDados) { // pacote para esse fragmentação
-
-                    DadosPacoteAtual[i] = this.comprimentoTotal[i];
-                    this.dados = DadosPacoteAtual;
                 }
-                if (i < soDados) {
+                
+                if (i < hlen * 4 + soDados ) {  // Preencher o comprimento Total do pacote
 
                     comprimentoTotalAtual[i] = this.comprimentoTotal[i];
-                }
-            }
-            this.primeiraParteMensagem = new String(DadosPacoteAtual, StandardCharsets.UTF_8);
-            this.dados = DadosPacoteAtual;
-            this.comprimentoTotal = comprimentoTotalAtual;
-            this.restanteDosDados = new String(RestanteDosDados, StandardCharsets.UTF_8);
                     
+                }
+                if( i < hlen * 4){
+                    
+                    comprimentoTotalProximoPacote[i] = this.comprimentoTotal[i]; // Comprimento Total Restante Nos Pacote                    
+                }                
+            }
+            
+            
+            antes = new String(DadosPacoteAtual, StandardCharsets.UTF_8);   // Mensagem que ta no pacote
+            primeiraParteMensagem = antes;           
+            p.setPrimeiraParteMensagem(primeiraParteMensagem);
+            
+                          // Mensagem para o proximo pacote
+            
+            depois = new String(dadosRestantes, StandardCharsets.UTF_8);
+            restanteDaMensagem = depois;
+            p.setRestanteDaMensagem(depois);
+                        
+            RestanteDosDados =  dadosRestantes;                                        // restante da mensagem em bytes    
+            p.setRestanteDosDados(dadosRestantes);
+                        
+            dados = DadosPacoteAtual;                                                 // Mensagem do pacote atual em bytes
+            p.setDados(DadosPacoteAtual );            
+            comprimentoTotal = comprimentoTotalAtual;                                 // comprimento total em bytes 
+            
+            p.setComprimentoTotal(comprimentoTotalAtual);  
+            
+            comprimentoTotal = comprimentoTotalProximoPacote;                        // Comprimento Total Restante Nos Pacote
+                        
         }
+    }
+
+    public void  CalcularChecksum() {
 
     }
 
-    public void Checksum() {
-
+    public byte[] getComprimentoTotal() {
+        return comprimentoTotal;
     }
 
-    public String getIpv4Origem() {
-        return ipv4Origem;
+    public void setComprimentoTotal(byte[] comprimentoTotal) {
+        this.comprimentoTotal = comprimentoTotal;
     }
 
-    public String getIpv4Destino() {
-        return ipv4Destino;
+    public byte[] getDados() {
+        return dados;
+    }
+
+    public void setDados(byte[] dados) {
+        this.dados = dados;
+    }
+
+    public byte[] getRestanteDosDados() {
+        return RestanteDosDados;
+    }
+
+    public void setRestanteDosDados(byte[] RestanteDosDados) {
+        this.RestanteDosDados = RestanteDosDados;
+    }
+
+    public int getIdentificacao() {
+        return identificacao;
+    }
+
+    public void setIdentificacao(int identificacao) {
+        this.identificacao = identificacao;
+    }
+
+    public boolean isCanFragment() {
+        return canFragment;
+    }
+
+    public void setCanFragment(boolean canFragment) {
+        this.canFragment = canFragment;
+    }
+
+    public boolean isIsLast() {
+        return isLast;
+    }
+
+    public void setIsLast(boolean isLast) {
+        this.isLast = isLast;
+    }
+
+    public int getOffSet() {
+        return offSet;
+    }
+
+    public void setOffSet(int offSet) {
+        this.offSet = offSet;
     }
 
     public int getTempoDeVida() {
@@ -163,48 +291,36 @@ public class Pacote {
         this.checksum = checksum;
     }
 
-    public byte[] getComprimentoTotal() {
-        return comprimentoTotal;
+    public String getIpv4Origem() {
+        return ipv4Origem;
     }
 
-    public boolean isCanFragment() {
-        return canFragment;
+    public void setIpv4Origem(String ipv4Origem) {
+        this.ipv4Origem = ipv4Origem;
     }
 
-    public void setCanFragment(boolean canFragment) {
-        this.canFragment = canFragment;
+    public String getIpv4Destino() {
+        return ipv4Destino;
     }
 
-    public int getIdentificacao() {
-        return identificacao;
+    public void setIpv4Destino(String ipv4Destino) {
+        this.ipv4Destino = ipv4Destino;
     }
 
-    public int getOffSet() {
-        return offSet;
+    public String getPrimeiraParteMensagem() {
+        return primeiraParteMensagem;
     }
 
-    public void setOffSet(int offSet) {
-        this.offSet = offSet;
+    public void setPrimeiraParteMensagem(String primeiraParteMensagem) {
+        this.primeiraParteMensagem = primeiraParteMensagem;
     }
 
-    public boolean isIsLast() {
-        return isLast;
+    public String getRestanteDaMensagem() {
+        return restanteDaMensagem;
     }
 
-    public void setIsLast(boolean isLast) {
-        this.isLast = isLast;
+    public void setRestanteDaMensagem(String restanteDaMensagem) {
+        this.restanteDaMensagem = restanteDaMensagem;
     }
-
-    public void setProtocolo(int protocolo) {
-        this.protocolo = protocolo;
-    }
-
-    public int getProtocolo() {
-        return protocolo;
-    }
-
-    public byte[] getMensagemCompleta() {
-        return mensagemCompleta;
-    }
-
+    
 }

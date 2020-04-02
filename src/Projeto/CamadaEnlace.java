@@ -10,6 +10,7 @@ class CamadaEnlace {
         
         this.macAddress = MacAddress;
         this.fisica = fisica;
+        
     }
    
     void ReceiveRedes(Object mensagem){
@@ -26,7 +27,8 @@ class CamadaEnlace {
         
         this.SendRedes(mensagem);
         
-    }    
+    }
+    
     void SendFisica(Object mensagem){
         
         fisica.notifyObserver(mensagem);        
@@ -55,5 +57,6 @@ class CamadaEnlace {
     public void setFisica(CamadaFisica fisica) {
         this.fisica = fisica;
     }    
+    
     
 }
