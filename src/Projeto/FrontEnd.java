@@ -12,7 +12,7 @@ public class FrontEnd {
 //        barramento.attach(comp);
 //        comp.Send("Abacaxi");
         ArrayList <Pacote> p = new ArrayList <> ();
-        Pacote pacote = new Pacote(1,"abacaxi","192.168.1.55","185.255.148.24",1);
+        Pacote pacote = new Pacote(1,"abacaxi","192.168.1.55","185.255.148.24",1,22);
         pacote.PreencherComprimentoTotal();
         String mensagem;
         p = pacote.Fragmentar();

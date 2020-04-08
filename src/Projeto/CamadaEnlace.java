@@ -5,12 +5,13 @@ class CamadaEnlace {
     private String macAddress;
     CamadaRedes redes;
     CamadaFisica fisica;
+    int mtu;
     
-    public CamadaEnlace (CamadaFisica fisica, String MacAddress){
+    public CamadaEnlace (CamadaFisica fisica, String MacAddress, int mtu){
         
         this.macAddress = MacAddress;
         this.fisica = fisica;
-        
+        this.mtu = mtu;
     }
    
     void ReceiveRedes(Object mensagem){
@@ -57,6 +58,14 @@ class CamadaEnlace {
     public void setFisica(CamadaFisica fisica) {
         this.fisica = fisica;
     }    
+
+    public int getMtu() {
+        return mtu;
+    }
+
+    public void setMtu(int mtu) {
+        this.mtu = mtu;
+    }
     
     
 }

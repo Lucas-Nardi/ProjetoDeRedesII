@@ -12,7 +12,7 @@ public class Computador  implements Observer{
         this.camadaAplicacao = new CamadaAplicacao();
         this.camadaTransporte = new CamadaTransporte();
         this.camadaRedes = new CamadaRedes(iPv4,26);        
-        this.camadaEnlace = new CamadaEnlace(barramento, macAddress);
+        this.camadaEnlace = new CamadaEnlace(barramento, macAddress,22);
         
         this.camadaAplicacao.setTransporte(camadaTransporte);
         
