@@ -25,20 +25,44 @@ public class CamadaFisica implements Observable{ // É o barramento
 
     @Override
     public void notifyObserver(Object mensagem) {
+       
+        PacoteArp arp;
+        PacoteIpv4 ipv4;
         
         for(Observer o: observadores){
             
             if(o instanceof Computador){
                 
                 Computador comp = (Computador) o;
-                comp.Receive(mensagem); // Recebe a mensagem do Barramento
+                
+                if(mensagem instanceof PacoteArp){                
+                    
+                    arp = (PacoteArp) mensagem;
+                    
+                    if(!arp.getMacDestino().equals("0")){ // MEU ARP É O REPLY
+                        
+                        if(comp.getCamadaRedes().getIpv4().equals(arp.getIpV4Origem())){ // SO ENVIAR O ARP REPLY PARA O COMPUTADOR DE ORIGEM
+                            
+                            comp.Receive(mensagem); // Recebe a mensagem do Barramento
+                        }
+                        
+                    }else{                        
+                        
+                        comp.Receive(mensagem); // Recebe a mensagem do Barramento
+                    }                
+                }
+                
+                if(mensagem instanceof PacoteIpv4){                    
+                    
+                    comp.Receive(mensagem);
+                }
             }
             
             if(o instanceof Roteador){
                 
                 Roteador router = (Roteador) o;
                 router.Receive(mensagem); // Recebe a mensagem do barramento
-            }
+            }          
         
         }
     }

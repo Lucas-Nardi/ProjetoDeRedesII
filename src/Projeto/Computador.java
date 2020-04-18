@@ -29,14 +29,30 @@ public class Computador  implements Observer{
     public void Send(Object mensagem) { // Enviar pacote para o barramento
         
         camadaAplicacao.SendTransporte(mensagem);
-        
     }
-
+    
     @Override
     public void Receive(Object mensagem) { // Receber pacote do barramento
         
         camadaEnlace.ReceiveFisica(mensagem);
-        
     }
+
+    public CamadaRedes getCamadaRedes() {
+        return camadaRedes;
+    }
+
+    public CamadaEnlace getCamadaEnlace() {
+        return camadaEnlace;
+    }
+
+    public CamadaTransporte getCamadaTransporte() {
+        return camadaTransporte;
+    }
+
+    public CamadaAplicacao getCamadaAplicacao() {
+        return camadaAplicacao;
+    }
+    
+    
     
 }

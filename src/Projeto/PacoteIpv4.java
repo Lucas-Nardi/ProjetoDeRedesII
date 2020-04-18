@@ -3,7 +3,7 @@ package Projeto;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
-public class Pacote  implements Comparable< Pacote >{
+public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
 
     int VER;  // Tem 4 bits logo pode ser (0-15)
     //0000, 0001,0010,0011,0100,0101,0110,0111,1000,1001,1010,1011,1100,1101,1111
@@ -27,7 +27,7 @@ public class Pacote  implements Comparable< Pacote >{
     String restanteDaMensagem;
     int mtu;
     
-    public Pacote(int numMensagem, Object mensagem, String ipv4Origem, String ipv4Destino, int protocolo, int mtu) {
+    public PacoteIpv4(int numMensagem, Object mensagem, String ipv4Origem, String ipv4Destino, int protocolo, int mtu) {
         
         this.VER = 15;  // 11111
         this.Hlen = 5;
@@ -71,14 +71,14 @@ public class Pacote  implements Comparable< Pacote >{
         }        
     }
     
-    public ArrayList<Pacote> Fragmentar() {
+    public ArrayList<PacoteIpv4> Fragmentar() {
         
                 
         boolean PrimeiroPacoteDaFragmentação = true;
-        ArrayList<Pacote> p = new ArrayList<>();
+        ArrayList<PacoteIpv4> p = new ArrayList<>();
         int TotalDeDados = 0;
         int comprimentoAtual = this.comprimentoTotal.length;
-        Pacote pacote;
+        PacoteIpv4 pacote;
 
         if (!this.canFragment) { // Nao posso fragmentar o pacote
             p.add(this);
@@ -90,7 +90,7 @@ public class Pacote  implements Comparable< Pacote >{
             
             while (comprimentoAtual > mtu) {
                 
-                pacote = new Pacote(this.identificacao, this.restanteDaMensagem,this.ipv4Origem, this.ipv4Destino, this.protocolo,mtu);
+                pacote = new PacoteIpv4(this.identificacao, this.restanteDaMensagem,this.ipv4Origem, this.ipv4Destino, this.protocolo,mtu);
                 
                 
                 if (PrimeiroPacoteDaFragmentação) {
@@ -134,7 +134,7 @@ public class Pacote  implements Comparable< Pacote >{
                 offSet = TotalDeDados % 8;
             }
             
-            pacote = new Pacote(this.identificacao, restanteDaMensagem,this.ipv4Origem, this.ipv4Destino, this.protocolo,mtu);
+            pacote = new PacoteIpv4(this.identificacao, restanteDaMensagem,this.ipv4Origem, this.ipv4Destino, this.protocolo,mtu);
             pacote.setCanFragment(true);
             pacote.setIsLast(true);
             pacote.setRestanteDaMensagem("Fim da mensagem");
@@ -150,7 +150,7 @@ public class Pacote  implements Comparable< Pacote >{
         return p;
     }
 
-    public void setDividirDados(int MTU, int hlen, Pacote p) {
+    public void setDividirDados(int MTU, int hlen, PacoteIpv4 p) {
 
         if (!p.isLast) { // Se nao for o ultimo pacote, fragmentar as informações
 
@@ -191,7 +191,7 @@ public class Pacote  implements Comparable< Pacote >{
                 }
                 if( i < hlen * 4){
                     
-                    comprimentoTotalProximoPacote[i] = this.comprimentoTotal[i]; // Comprimento Total Restante Nos Pacote                    
+                    comprimentoTotalProximoPacote[i] = this.comprimentoTotal[i]; // Comprimento Total Restante Nos PacoteIpv4                    
                 }                
             }
             
@@ -215,7 +215,7 @@ public class Pacote  implements Comparable< Pacote >{
             
             p.setComprimentoTotal(comprimentoTotalAtual);  
             
-            comprimentoTotal = comprimentoTotalProximoPacote;                        // Comprimento Total Restante Nos Pacote
+            comprimentoTotal = comprimentoTotalProximoPacote;                        // Comprimento Total Restante Nos PacoteIpv4
                         
         }
     }
@@ -225,9 +225,9 @@ public class Pacote  implements Comparable< Pacote >{
     }
 
     @Override
-    public int compareTo(Pacote o) {
+    public int compareTo(PacoteIpv4 p) {
        
-        return this.getOffSet() - o.getOffSet();
+        return ( this.offSet - p.getOffSet() ) ;
     }
     
     public byte getServico() {
