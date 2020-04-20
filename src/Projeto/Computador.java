@@ -1,5 +1,7 @@
 package Projeto;
 
+import java.util.concurrent.ExecutionException;
+
 public class Computador  implements Observer{
     
     private CamadaRedes camadaRedes;
@@ -33,8 +35,13 @@ public class Computador  implements Observer{
     
     @Override
     public void Receive(Object mensagem) { // Receber pacote do barramento
-        
-        camadaEnlace.ReceiveFisica(mensagem);
+        try {
+            camadaEnlace.ReceiveFisica(mensagem);
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     public CamadaRedes getCamadaRedes() {

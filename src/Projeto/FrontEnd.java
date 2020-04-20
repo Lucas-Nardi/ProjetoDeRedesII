@@ -1,5 +1,7 @@
 package Projeto;
 
+import Projeto.utils.CheckSum;
+
 public class FrontEnd {
     
     public static void main (String[]args){
@@ -11,6 +13,5 @@ public class FrontEnd {
         barramento.attach(comp2);        
         Mensagem mensagem  = new Mensagem("Abacaxi","192.168.25.1");
         comp1.Send(mensagem);
-
     }
 }
