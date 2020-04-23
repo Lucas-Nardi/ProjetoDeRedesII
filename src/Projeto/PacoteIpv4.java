@@ -415,15 +415,19 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
             copiaSomaDec[i] = somaDec[i];
         }
 
-        //complemento de 1 no vetor somaDec
-        somaHex = calculaComplementoDeUm(somaDec, colunas);
 
-        //realizar o complemento no vetor somaHex
-        //transforma em uma string
+        //realiza o calculo do que sobe e  do que fica no vetor somaDec e retorna no vetor somaHex o resultado em hexa
+        somaHex = calculaSomahexa(somaDec, colunas);
+
+        //realizar o complemento de um no vetor somaHex
+        calculaComplementoDeUm(somaHex);
+
+        //transforma somaHex em uma string
         String somaHexStr = new String(somaHex);
 
-//        converte o string em inteiro,realiza o complemento e adiciona ao checksum
-        checksum = ~(Integer.parseInt(somaHexStr,16))+1;
+//        converte o string em inteiro e adiciona ao checksum
+        checksum = Integer.parseInt(somaHexStr,16);
+
 
 
 //        System.out.println(checksumBinStr.substring(0,8));
@@ -473,7 +477,7 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         return splittedIpIntegers.toArray(new Integer[0]);
     }
 
-    public char [] calculaComplementoDeUm(int [] somaDec, int colunas){
+    public char [] calculaSomahexa(int [] somaDec, int colunas){
         char [] somaHex = new char[colunas];
         int sobe = 0;
         int [] copiaSomaDec = new int[colunas];
@@ -498,14 +502,14 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
                   somaHex[colunas-1] = Integer.toHexString(somaDec[colunas-1]).charAt(0);
               } else{                                                           //se a string hexadecimal tiver dois caracteres
                   copiaSomaDec[colunas-1] = copiaSomaDec[colunas-1] + sobe;      //adiciono o sobra a ultima coluna dda copia do vetor decimal e faco um novo preenchimento do vetor hexa
-                  return verificacaoCalculaComplementoDeUm(copiaSomaDec, colunas);
+                  return verificacaoCalculoSomaHexa(copiaSomaDec, colunas);
               }
           }
         }
         return somaHex;
     }
 
-    public char [] verificacaoCalculaComplementoDeUm(int [] somaDec, int colunas){
+    public char [] verificacaoCalculoSomaHexa(int [] somaDec, int colunas){
         char [] somaHex = new char[colunas];
         int sobe = 0;
 
@@ -534,6 +538,44 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         }
 
         return matInt;
+    }
+
+    public void calculaComplementoDeUm(char [] somaHex){
+        for(int i = 0; i < somaHex.length; i++){
+            if(somaHex[i] == 'f'){
+                somaHex[i] = '0';
+            } else if(somaHex[i] == 'e'){
+                somaHex[i] = '1';
+            } else if(somaHex[i] == 'd'){
+                somaHex[i] = '2';
+            } else if(somaHex[i] == 'c'){
+                somaHex[i] = '3';
+            } else if(somaHex[i] == 'b'){
+                somaHex[i] = '4';
+            } else if(somaHex[i] == 'a'){
+                somaHex[i] = '5';
+            } else if(somaHex[i] == '9'){
+                somaHex[i] = '6';
+            } else if(somaHex[i] == '8'){
+                somaHex[i] = '7';
+            } else if(somaHex[i] == '7'){
+                somaHex[i] = '8';
+            } else if(somaHex[i] == '6'){
+                somaHex[i] = '9';
+            } else if(somaHex[i] == '5'){
+                somaHex[i] = 'a';
+            } else if(somaHex[i] == '4'){
+                somaHex[i] = 'b';
+            } else if(somaHex[i] == '3'){
+                somaHex[i] = 'c';
+            } else if(somaHex[i] == '2'){
+                somaHex[i] = 'd';
+            } else if(somaHex[i] == '1'){
+                somaHex[i] = 'e';
+            } else if(somaHex[i] == '0'){
+                somaHex[i] = 'f';
+            }
+        }
     }
 
     public int encontraValorChar(char caracter){

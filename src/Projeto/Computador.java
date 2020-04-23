@@ -33,7 +33,7 @@ public class Computador  implements Observer{
     
     @Override
     public void Receive(Object mensagem) { // Receber pacote do barramento
-        
+
         camadaEnlace.ReceiveFisica(mensagem);
     }
 
