@@ -2,6 +2,9 @@ package Projeto;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
 
@@ -13,7 +16,7 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
     byte[] dados;
     byte[] RestanteDosDados; // Restante dos dados para os proximos pacotes
     byte[] mensagemCompleta; // Mensagem inicial (completa) 
-    byte[] checksum;         // 2 Bytes , precisamos calcular
+    int checksum;         // 2 Bytes , precisamos calcular
     int identificacao;       // 2 Bytes
     int reservado;           // Compoem o flag 
     boolean canFragment;     // Compoem o flag -- pode ser 0 ou 1
@@ -46,11 +49,12 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         this.offSet = 0;
         this.canFragment = true; // 0
         this.isLast = true; // 0
-        this.tempoDeVida = 256;
+        this.tempoDeVida = 255;
         this.ipv4Origem = ipv4Origem;
         this.ipv4Destino = ipv4Destino;
         this.protocolo = protocolo;    //  1 == ICMP, 2== IGMP, 6== TCP, 17 == UDP, 89 == OSPF  -- pagina 588
         this.mtu = mtu;
+        this.checksum = 0;             //   inicialmente possui valor zero
         
 
     } // FALTA COLOCAR O HLEN + OS DADOS DENTRO DA ARRAY COMPRIMENTO TOTAL
@@ -222,6 +226,354 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
 
     public void  CalcularChecksum() {
 
+        int linhas = 10;
+        int colunas = 4;
+        char [][] matStr = new char [linhas][colunas];
+        int [][] matInt;
+        int [] somaDec = new int[colunas];
+        int [] copiaSomaDec = new int[colunas];
+        char [] somaHex;
+
+        //preenche matriz de char's
+        //primeira linha da matriz
+        matStr[0][0] = Integer.toHexString(VER).charAt(0);
+        matStr[0][1] = Integer.toHexString(Hlen).charAt(0);
+       if(Integer.toHexString(servico).length() == 2){
+           matStr[0][2] = Integer.toHexString(servico).charAt(0);
+           matStr[0][3] = Integer.toHexString(servico).charAt(1);
+       } else {
+           matStr[0][2] = '0';
+           matStr[0][3] = Integer.toHexString(servico).charAt(0);
+       }
+
+       //segunda linha da matriz
+        int tamComprimento = Integer.toHexString(comprimentoTotal.length).length()-1;
+        for(int i = colunas-1; i >= 0; i--){
+            if(tamComprimento >=0){
+                matStr[1][i] = Integer.toHexString(comprimentoTotal.length).charAt(tamComprimento);
+                tamComprimento--;
+            } else {
+                matStr[1][i] = '0';
+            }
+        }
+
+        //terceira linha da matriz
+        int tamIdentificacao = Integer.toHexString(identificacao).length()-1;
+        for(int i = colunas-1; i >= 0; i--){
+            if(tamIdentificacao >=0){
+                matStr[2][i] = Integer.toHexString(identificacao).charAt(tamIdentificacao);
+                tamIdentificacao--;
+            } else {
+                matStr[2][i] = '0';
+            }
+        }
+
+        //quarta linha da matriz
+        char [] flags =  new char [4];           // 3 bits de flags e 1 bit do offset
+        flags[0] = Integer.toString(reservado).charAt(0);
+        if(canFragment == true){
+            flags[1] = '0';
+        } else {
+            flags[1] = '1';
+        }
+        if(isLast == true){
+            flags[2] = '0';
+        } else {
+            flags[2] = '1';
+        }
+        if(Integer.toHexString(offSet).length() == 4){
+            flags[3] = Integer.toHexString(offSet).charAt(0);
+        } else {
+            flags[3] = '0';
+        }
+        String flagString = new String(flags);
+        matStr[3][0] = Integer.toHexString(Integer.parseInt(flagString,2)).charAt(0);
+
+        int tamOffset = Integer.toHexString(offSet).length()-1;
+        for(int i = colunas-1; i > 0; i--){
+            if(tamOffset >=0){
+                matStr[3][i] = Integer.toHexString(offSet).charAt(tamOffset);
+                tamOffset--;
+            } else {
+                matStr[3][i] = '0';
+            }
+        }
+
+        //quinta linha da matriz
+        if(Integer.toHexString(tempoDeVida).length() == 2){
+            matStr[4][0] = Integer.toHexString(tempoDeVida).charAt(0);
+            matStr[4][1] = Integer.toHexString(tempoDeVida).charAt(1);
+        } else {
+            matStr[4][0] = '0';
+            matStr[4][1] = Integer.toHexString(tempoDeVida).charAt(0);
+        }
+        if(Integer.toHexString(protocolo).length() == 2){
+            matStr[4][2] = Integer.toHexString(protocolo).charAt(0);
+            matStr[4][3] = Integer.toHexString(protocolo).charAt(1);
+        } else {
+            matStr[4][2] = '0';
+            matStr[4][3] = Integer.toHexString(protocolo).charAt(0);
+        }
+
+        //sexta linha da matriz
+        Integer [] numerosIpOrigem = convertIpToArrayOfInteger(ipv4Origem);
+        //primera parte do ipv4Origem
+        if(Integer.toHexString(numerosIpOrigem[0]).length() == 2){
+            matStr[5][0] = Integer.toHexString(numerosIpOrigem[0]).charAt(0);
+            matStr[5][1] = Integer.toHexString(numerosIpOrigem[0]).charAt(1);
+        } else {
+            matStr[5][0] = '0';
+            matStr[5][1] = Integer.toHexString(numerosIpOrigem[0]).charAt(0);
+        }
+        //segunda parte do ipv4Origem
+        if(Integer.toHexString(numerosIpOrigem[1]).length() == 2){
+            matStr[5][2] = Integer.toHexString(numerosIpOrigem[1]).charAt(0);
+            matStr[5][3] = Integer.toHexString(numerosIpOrigem[1]).charAt(1);
+        } else {
+            matStr[5][2] = '0';
+            matStr[5][3] = Integer.toHexString(numerosIpOrigem[1]).charAt(0);
+        }
+
+        //setima linha da matriz
+        //terceira parte do ipv4Origem
+        if(Integer.toHexString(numerosIpOrigem[2]).length() == 2){
+            matStr[6][0] = Integer.toHexString(numerosIpOrigem[2]).charAt(0);
+            matStr[6][1] = Integer.toHexString(numerosIpOrigem[2]).charAt(1);
+        } else {
+            matStr[6][0] = '0';
+            matStr[6][1] = Integer.toHexString(numerosIpOrigem[2]).charAt(0);
+        }
+        //quarta parte do ipv4Origem
+        if(Integer.toHexString(numerosIpOrigem[1]).length() == 2){
+            matStr[6][2] = Integer.toHexString(numerosIpOrigem[3]).charAt(0);
+            matStr[6][3] = Integer.toHexString(numerosIpOrigem[3]).charAt(1);
+        } else {
+            matStr[6][2] = '0';
+            matStr[6][3] = Integer.toHexString(numerosIpOrigem[3]).charAt(0);
+        }
+
+        //oitava linha da matriz
+        Integer [] numerosIpDestino = convertIpToArrayOfInteger(ipv4Destino);
+        //primera parte do ipv4Destino
+        if(Integer.toHexString(numerosIpDestino[0]).length() == 2){
+            matStr[7][0] = Integer.toHexString(numerosIpDestino[0]).charAt(0);
+            matStr[7][1] = Integer.toHexString(numerosIpDestino[0]).charAt(1);
+        } else {
+            matStr[7][0] = '0';
+            matStr[7][1] = Integer.toHexString(numerosIpDestino[0]).charAt(0);
+        }
+        //segunda parte do ipv4Origem
+        if(Integer.toHexString(numerosIpDestino[1]).length() == 2){
+            matStr[7][2] = Integer.toHexString(numerosIpDestino[1]).charAt(0);
+            matStr[7][3] = Integer.toHexString(numerosIpDestino[1]).charAt(1);
+        } else {
+            matStr[7][2] = '0';
+            matStr[7][3] = Integer.toHexString(numerosIpDestino[1]).charAt(0);
+        }
+
+        //nona linha da matriz
+        //terceira parte do ipv4Destino
+        if(Integer.toHexString(numerosIpDestino[2]).length() == 2){
+            matStr[8][0] = Integer.toHexString(numerosIpDestino[2]).charAt(0);
+            matStr[8][1] = Integer.toHexString(numerosIpDestino[2]).charAt(1);
+        } else {
+            matStr[8][0] = '0';
+            matStr[8][1] = Integer.toHexString(numerosIpDestino[2]).charAt(0);
+        }
+        //quarta parte do ipv4Destino
+        if(Integer.toHexString(numerosIpDestino[1]).length() == 2){
+            matStr[8][2] = Integer.toHexString(numerosIpDestino[3]).charAt(0);
+            matStr[8][3] = Integer.toHexString(numerosIpDestino[3]).charAt(1);
+        } else {
+            matStr[8][2] = '0';
+            matStr[8][3] = Integer.toHexString(numerosIpDestino[3]).charAt(0);
+        }
+
+        //decima linha da matriz (checksum)
+        int tamChecksum = Integer.toHexString(checksum).length()-1;
+        for(int i = colunas-1; i >= 0; i--){
+            if(tamChecksum >=0){
+                matStr[9][i] = Integer.toHexString(checksum).charAt(tamChecksum);
+                tamChecksum--;
+            } else {
+                matStr[9][i] = '0';
+            }
+        }
+
+
+        //criar matriz decimal a partir da matriz de caracteres
+        matInt = criarMatrizNumerica(matStr, linhas, colunas);
+
+        //somar colunas da matriz decimal e armazenar em vetor decimal
+        for(int i = colunas-1; i >= 0; i--){
+            for(int j = 0; j < linhas; j++){
+                somaDec[i] = somaDec[i] + matInt[j][i];
+            }
+        }
+
+        for(int i = 0; i < somaDec.length; i++){                //guardando soma original das colunas
+            copiaSomaDec[i] = somaDec[i];
+        }
+
+        //complemento de 1 no vetor somaDec
+        somaHex = calculaComplementoDeUm(somaDec, colunas);
+
+        //realizar o complemento no vetor somaHex
+        //transforma em uma string
+        String somaHexStr = new String(somaHex);
+
+//        converte o string em inteiro,realiza o complemento e adiciona ao checksum
+        checksum = ~(Integer.parseInt(somaHexStr,16))+1;
+
+
+//        System.out.println(checksumBinStr.substring(0,8));
+//        System.out.println(checksumBinStr.substring(8,16));
+//
+//        System.out.println(Integer.parseInt(checksumBinStr.substring(0,8),2));
+//        System.out.println(Integer.parseInt(checksumBinStr.substring(8,16),2));
+        //checksum[0] = Byte.parseByte(checksumBinStr.substring(0,5),2);
+
+
+        for(int i = 0; i < linhas; i++){
+            for(int j = 0; j < colunas; j++){
+                System.out.print(matStr[i][j] + ", ");
+
+            }
+            System.out.println();
+        }
+        System.out.println("================================");
+
+        for(int i = 0; i < linhas; i++){
+            for(int j = 0; j < colunas; j++){
+                System.out.print(matInt[i][j] + ", ");
+
+            }
+            System.out.println();
+        }
+        System.out.println();
+        for(int i = 0; i < copiaSomaDec.length; i++){
+            System.out.print(copiaSomaDec[i] + ", ");
+        }
+        System.out.println();
+        for(int i = 0; i < somaHex.length; i++){
+            System.out.print(somaHex[i] + ", ");
+        }
+        System.out.println(somaHex);
+        System.out.println();
+
+       // System.out.println(Integer.parseInt(somaHexStr,16));
+        System.out.println(checksum);
+        //System.out.println(Integer.toBinaryString(checksum));
+
+    }
+
+    public static Integer[] convertIpToArrayOfInteger(String ip) {
+        List<String> splittedIp = Arrays.asList(ip.split("[.]"));
+        List<Integer> splittedIpIntegers = splittedIp.stream().map(Integer::valueOf).collect(Collectors.toList());
+        return splittedIpIntegers.toArray(new Integer[0]);
+    }
+
+    public char [] calculaComplementoDeUm(int [] somaDec, int colunas){
+        char [] somaHex = new char[colunas];
+        int sobe = 0;
+        int [] copiaSomaDec = new int[colunas];
+
+        for(int i = 0; i < somaDec.length; i++){                //guardando soma original das colunas
+            copiaSomaDec[i] = somaDec[i];
+        }
+
+        for(int i = colunas-1; i >= 0; i--){
+          if(Integer.toHexString(somaDec[i]).length() == 1){                //se a string hexadecimal tiver um so caracter
+              somaHex[i] = Integer.toHexString(somaDec[i]).charAt(0);
+              sobe = 0;
+          } else{                                                           //se a string hexadecimal tiver dois caracteres
+              somaHex[i] = Integer.toHexString(somaDec[i]).charAt(1);
+              sobe = encontraValorChar(Integer.toHexString(somaDec[i]).charAt(0));
+          }
+          if(i > 0){                                                    //enquanto n chega na ultima coluna sobe eh adicionado na coluna seguinte
+              somaDec[i-1] = somaDec[i-1] + sobe;
+          } else {                                                       //quando chegamos na ultima coluna sobe tem q ser adicionado a primeira coluna(a mais a direita)
+              somaDec[colunas-1] = somaDec[colunas-1] + sobe;
+              if(Integer.toHexString(somaDec[colunas-1]).length() == 1){                //se a string hexadecimal tiver um so caracter
+                  somaHex[colunas-1] = Integer.toHexString(somaDec[colunas-1]).charAt(0);
+              } else{                                                           //se a string hexadecimal tiver dois caracteres
+                  copiaSomaDec[colunas-1] = copiaSomaDec[colunas-1] + sobe;      //adiciono o sobra a ultima coluna dda copia do vetor decimal e faco um novo preenchimento do vetor hexa
+                  return verificacaoCalculaComplementoDeUm(copiaSomaDec, colunas);
+              }
+          }
+        }
+        return somaHex;
+    }
+
+    public char [] verificacaoCalculaComplementoDeUm(int [] somaDec, int colunas){
+        char [] somaHex = new char[colunas];
+        int sobe = 0;
+
+        for(int i = colunas-1; i >= 0; i--){
+            if(Integer.toHexString(somaDec[i]).length() == 1){                //se a string hexadecimal tiver um so caracter
+                somaHex[i] = Integer.toHexString(somaDec[i]).charAt(0);
+                sobe = 0;
+            } else{                                                           //se a string hexadecimal tiver dois caracteres
+                somaHex[i] = Integer.toHexString(somaDec[i]).charAt(1);
+                sobe = encontraValorChar(Integer.toHexString(somaDec[i]).charAt(0));
+            }
+            if(i > 0){                                                    //enquanto n chega na ultima coluna sobe eh adicionado na coluna seguinte
+                somaDec[i-1] = somaDec[i-1] + sobe;
+            }
+        }
+        return somaHex;
+    }
+
+    public int[][] criarMatrizNumerica( char  [][] matStr, int linhas, int colunas){
+        int [][] matInt = new int [linhas][colunas];
+
+        for(int i = 0; i < linhas; i++){
+            for(int j = 0; j < colunas; j++){
+                matInt[i][j] = encontraValorChar(matStr [i][j]);
+            }
+        }
+
+        return matInt;
+    }
+
+    public int encontraValorChar(char caracter){
+        switch (caracter){
+            case '0':
+                return 0;
+            case '1':
+                return 1;
+            case '2':
+                return 2;
+            case '3':
+                return 3;
+            case '4':
+                return 4;
+            case '5':
+                return 5;
+            case '6':
+                return 6;
+            case '7':
+                return 7;
+            case '8':
+                return 8;
+            case '9':
+                return 9;
+            case 'a':
+                return 10;
+            case 'b':
+                return 11;
+            case 'c':
+                return 12;
+            case 'd':
+                return 13;
+            case 'e':
+                return 14;
+            case 'f':
+                return 15;
+            default:
+                return -1;
+
+        }
     }
 
     @Override
@@ -306,11 +658,11 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         this.tempoDeVida = tempoDeVida;
     }
 
-    public byte[] getChecksum() {
+    public int getChecksum() {
         return checksum;
     }
 
-    public void setChecksum(byte[] checksum) {
+    public void setChecksum(int checksum) {
         this.checksum = checksum;
     }
 
