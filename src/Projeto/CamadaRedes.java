@@ -12,21 +12,27 @@ class CamadaRedes {
     CamadaEnlace enlace;
     CamadaTransporte transporte;
     int numeroDaMensagem;
+    int protocolo;
+    boolean arpRequest;
     String ipv4;
     String mascara;
-    int protocolo;
-    HashMap<String, ArrayList<ArrayList<PacoteIpv4>>> mapping;
-    boolean arpRequest;
-    PacoteArp pacoteArp;
     String mensagemOriginal;
+    String netID;
+    HashMap<String, ArrayList<ArrayList<PacoteIpv4>>> mapping;
+    PacoteArp pacoteArp;
+        
+    ArrayList<ItensDaTabela> tabelaDeRoteamento;
     
-    public CamadaRedes(String ipv4, int valor) {
+    
+    public CamadaRedes(String ipv4, int valor,ArrayList<ItensDaTabela> tabelaDeRoteamento) {
 
         numeroDaMensagem = 0;
         this.ipv4 = ipv4;
         pegarMascara(valor);
         mapping = new HashMap<String, ArrayList<ArrayList<PacoteIpv4>>>();
         arpRequest = false;
+        this.tabelaDeRoteamento = tabelaDeRoteamento;
+        this.netID = pegarNetid(this.mascara, this.ipv4);
     }
 
     void pegarMascara(int mascara) {
@@ -134,27 +140,65 @@ class CamadaRedes {
                 break;
         }
     }
+    
+    String pegarNetid(String ipv4_1, String ipv4_2){
+                
+        String ipv4_1_SemPonto[];       
+        String ipv4_2_SemPonto[];
+        
+        ipv4_1_SemPonto = ipv4_1.split("\\.");
+        ipv4_2_SemPonto = ipv4_2.split("\\.");
+        
+        int ipv4_1_Decimal [] = new int[ipv4_1_SemPonto.length];
+        int ipv4_2_Decimal [] = new int[ipv4_1_SemPonto.length];
+        int resultado [] = new int[ipv4_1_SemPonto.length];
+        
+        for (int i = 0; i < ipv4_1_SemPonto.length; i++) {
+            
+            //System.out.println("-------------------------------------------------------------------");            
+            ipv4_1_Decimal[i] = Integer.parseInt(ipv4_1_SemPonto[i]); // Transforma a cada parte do ipv4 em decimal            
+            //System.out.println("Valor em Inteiro IPV4 1: " + ipv4_1_Decimal[i]);                        
+            ipv4_2_Decimal[i] = Integer.parseInt(ipv4_2_SemPonto[i]);        
+            //System.out.println("Valor em Inteiro IPV4 2: " + ipv4_2_Decimal[i]);
+            resultado[i] =  ipv4_2_Decimal[i] & ipv4_1_Decimal[i];         // Faz Operaçao AND
+            //System.out.println("Resultado em decimal : " + resultado[i]);                 
+            //System.out.println();
+        }
+        String resultadoAND = "";
+        
+        for(int i = 0; i < resultado.length; i++){
+            
+            if(i < 3){
+                resultadoAND = resultadoAND + resultado[i]+".";
+            }else{
+                resultadoAND = resultadoAND + resultado[i];
+            }        
+        }        
+        System.out.println(resultadoAND);        
+       
+        
+        return resultadoAND;
+    }
 
     byte[] restruturarMensagem(PacoteIpv4 p) {
 
         int dadoFinal = p.getMensagemCompleta().length;  // Tem o tamanho do mensagem antes da fragmentação
         int dadoAtual = 0;                               // Tem o tamanho da mensagem com relaçao aos pacote que ja chegaram
-        int j=0;
+        int j = 0;
         ArrayList<ArrayList<PacoteIpv4>> origemMensagens;
         ArrayList<PacoteIpv4> listaPacotes = null;
         PacoteIpv4 pacote;
         int qualMensagem = 0;
         byte[] mensagem = new byte[dadoFinal];            // Criar Mensagem
-        
+
         if (!mapping.isEmpty()) { // Segun
-            
-            if(p.getOffSet() == 0 && p.getDados().length == dadoFinal){ // Pacote nao foi fragmentado
-                
+
+            if (p.getOffSet() == 0 && p.getDados().length == dadoFinal) { // Pacote nao foi fragmentado
+
                 return p.getDados();
-            }            
+            }
             if (mapping.containsKey(p.getIpv4Origem())) { // Ja tenho uma mensagem desse computador
 
-               
                 origemMensagens = mapping.get(p.getIpv4Origem());  // Pegar a arrayList que tem todas as mensagens de um computador
 
                 for (int i = 0; i < origemMensagens.size(); i++) {  // Pegar Qual Mensagem esse pacote faz parte
@@ -163,11 +207,11 @@ class CamadaRedes {
                     qualMensagem = listaPacotes.get(0).getIdentificacao();
 
                     if (qualMensagem == p.getIdentificacao()) { // Descobri qual é a mensagem que o pacote faz 
-                        qualMensagem = i;                        
+                        qualMensagem = i;
                         break;
                     }
                 }
-               
+
                 for (int i = 0; i < listaPacotes.size(); i++) { // Ve se a quantidade de dados nos pacote guardados + o atual formam 
                     // a mensagem completa (inicial)
                     pacote = listaPacotes.get(i);
@@ -176,12 +220,10 @@ class CamadaRedes {
                 dadoAtual = dadoAtual + p.getDados().length;
 
                 if (dadoFinal == dadoAtual) {  // Todos os Pacotes Chegaram preciso remover eles da lista
-                    
-                   
+
                     listaPacotes.add(p);
-                   
+
                     //Collections.sort(listaPacotes);
-                  
                     for (int i = 0; i < listaPacotes.size(); i++) {
 
                         pacote = listaPacotes.get(i);
@@ -192,13 +234,13 @@ class CamadaRedes {
                             mensagem[j] = valor[k];
                             j++;
                         }
-                        
+
                     }
                     origemMensagens.remove(qualMensagem);
                     return mensagem;
 
                 } else { // Adicionar pacote na lista de pacote
-                    
+
                     listaPacotes.add(p);
                     Collections.sort(listaPacotes);
                 }
@@ -208,10 +250,10 @@ class CamadaRedes {
                 listaPacotes = new ArrayList<>();
                 listaPacotes.add(p);
                 origemMensagens.add(listaPacotes);
-                mapping.put(p.getIpv4Origem(), origemMensagens);                
+                mapping.put(p.getIpv4Origem(), origemMensagens);
             }
         } else { // Primeira mensagem que esse computador recebeu
-            
+
             origemMensagens = new ArrayList<>();
             listaPacotes = new ArrayList<>();
             listaPacotes.add(p);
@@ -226,23 +268,37 @@ class CamadaRedes {
         pacoteArp = new PacoteArp(operacao, ipV4Origem, ipV4Destino, macOrigem, macDestino);
     }
 
-    void ReceiveTransporte(Object mensagem, int protocolo) { // Colocar essa mensagem em um pacote
+    void ReceiveTransporte(Object mensagem, int protocolo) throws InterruptedException, ExecutionException { // Colocar essa mensagem em um pacote
 
         numeroDaMensagem++; // Recebi uma mensagem
+        String resultado;
+        
         if (mensagem instanceof Mensagem) {
             Mensagem m = (Mensagem) mensagem;
-
-            // VER SE O DESTINO É UM COMPUTADOR LOCAL OU UM ROTEADOR 
-            // FAZER UMA OPERACAO AND COM O IP DESTINO E A MASCARA, SE DER O VALOR DA MASCARA Ë LOCAL SE NAO É ROTEADOR
             this.arpRequest = m.isFazerArp();
         }
 
-        if (arpRequest) {
+        if (arpRequest) { // Se arpResquest == true preciso fazer arp 
 
             this.protocolo = protocolo;
             Mensagem m = (Mensagem) mensagem;
             this.mensagemOriginal = m.getMensagem();
-            this.criarPacoteArp(1, ipv4, m.getIpv4Destino(), this.enlace.getMacAddress(), "0");
+
+            resultado = pegarNetid(this.mascara, m.getIpv4Destino());
+            if(resultado.compareTo(this.netID) == 0){ // Mesma rede
+                
+                this.criarPacoteArp(1, ipv4, m.getIpv4Destino(), this.enlace.getMacAddress(), "0");
+            
+            }else{ // Esta em outra rede (Verificar a tabela de roteamento)
+                
+                for(ItensDaTabela i : tabelaDeRoteamento){
+                    
+                    resultado = pegarNetid(i.getMascara(), m.getIpv4Destino());
+                }
+                
+            }
+            // FAZER UMA OPERACAO AND COM O IP DESTINO E A MASCARA, SE DER O VALOR DA MASCARA Ë LOCAL SE NAO É ROTEADOR
+            
             this.protocolo = protocolo;
             this.SendEnlace(pacoteArp);
 
@@ -267,7 +323,7 @@ class CamadaRedes {
 
     void ReceiveEnlace(Object mensagem) throws InterruptedException, ExecutionException { // Ler o PacoteIpv4 Ipv4
 
-        if (mensagem instanceof PacoteArp) { 
+        if (mensagem instanceof PacoteArp) {
 
             PacoteArp pacote = (PacoteArp) mensagem;
 
@@ -291,20 +347,32 @@ class CamadaRedes {
         } else if (mensagem instanceof PacoteIpv4) {
 
             PacoteIpv4 p = (PacoteIpv4) mensagem;
+            String informacao;
             
             if (p.getIpv4Destino().equals(this.ipv4)) {
 
-                CompletableFuture< byte[]> completableFuture = CompletableFuture.supplyAsync(() -> restruturarMensagem(p));
-                
-                while (!completableFuture.isDone()) { // ENQUANTO A RESTRUTURAÇÃO NAO ESTA PRONTO
+                p.CalcularChecksum();
+            
+                if (p.getChecksum() == 0) { // Pacote nao perdeu nenhum informação
+
+                    CompletableFuture< byte[]> completableFuture = CompletableFuture.supplyAsync(() -> restruturarMensagem(p));
+
+                    while (!completableFuture.isDone()) { // ENQUANTO A RESTRUTURAÇÃO NAO ESTA PRONTO
+
+                    }
+                    byte[] message = completableFuture.get();
+
+                    if (message != null) {
+                        informacao = new String(message, StandardCharsets.UTF_8);
+                        this.SendTransporte(informacao);
+                    }
+
+                } else { // Pacote Perdeu informação
                     
+                    informacao = new String(p.getDados(), StandardCharsets.UTF_8);
+                    System.out.println("O pacote que tinha "+  informacao + "essa informação perdeu algum dado");
                 }
-                byte[] message = completableFuture.get();
-                
-                if(message != null){
-                    String informacao = new String(message, StandardCharsets.UTF_8);
-                    this.SendTransporte(informacao);
-                }
+
             }
         }
     }

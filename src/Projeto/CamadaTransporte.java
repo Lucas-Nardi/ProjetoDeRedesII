@@ -1,12 +1,14 @@
 package Projeto;
 
+import java.util.concurrent.ExecutionException;
+
 class CamadaTransporte {
     
     CamadaAplicacao aplicacao;
     CamadaRedes redes;
 
         
-    void ReceiveAplicacao(Object mensagem){  // Recebe Algo da cadama de Aplicação
+    void ReceiveAplicacao(Object mensagem) throws InterruptedException, ExecutionException{  // Recebe Algo da cadama de Aplicação
         
         this.SendRedes(mensagem); // Manda para a camda de redes;
     }
@@ -20,7 +22,7 @@ class CamadaTransporte {
         this.SendAplicacao(mensagem);
     }
     
-    void SendRedes(Object mensagem){ // Recebeu uma mensagem da camada de aplicacao e manda para a camada de redes
+    void SendRedes(Object mensagem) throws InterruptedException, ExecutionException{ // Recebeu uma mensagem da camada de aplicacao e manda para a camada de redes
         
         this.redes.ReceiveTransporte(mensagem,1); // Mandar o Protocolo para a camda de redes
     }

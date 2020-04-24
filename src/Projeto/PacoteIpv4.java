@@ -4,9 +4,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
+public class PacoteIpv4 implements Comparable< PacoteIpv4> {
 
     int VER;  // Tem 4 bits logo pode ser (0-15)
     //0000, 0001,0010,0011,0100,0101,0110,0111,1000,1001,1010,1011,1100,1101,1111
@@ -29,20 +30,20 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
     String primeiraParteMensagem;
     String restanteDaMensagem;
     int mtu;
-    
+
     public PacoteIpv4(int numMensagem, Object mensagem, String ipv4Origem, String ipv4Destino, int protocolo, int mtu) {
-        
-        this.VER = 15;  // 11111
+
+        this.VER = 4;  // 11111
         this.Hlen = 5;
-        String message = (String) mensagem;        
-        this.primeiraParteMensagem = message;            ;
+        String message = (String) mensagem;
+        this.primeiraParteMensagem = message;;
         this.restanteDaMensagem = message;
-        
+
         this.dados = message.getBytes(StandardCharsets.UTF_8); // Pega a mensagem e transforma em bytes        
         this.RestanteDosDados = dados;                         // Mensagem nao fragmentada logo, RestanteDosDados é mensagem original
         this.mensagemCompleta = dados;                         // Salva Mensagem Original
-        this.comprimentoTotal = new byte[Hlen * 4 + dados.length];        
-        
+        this.comprimentoTotal = new byte[Hlen * 4 + dados.length];
+
         this.servico = 0;
         this.identificacao = numMensagem;
         this.reservado = 0;
@@ -55,66 +56,61 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         this.protocolo = protocolo;    //  1 == ICMP, 2== IGMP, 6== TCP, 17 == UDP, 89 == OSPF  -- pagina 588
         this.mtu = mtu;
         this.checksum = 0;             //   inicialmente possui valor zero
-        
 
     } // FALTA COLOCAR O HLEN + OS DADOS DENTRO DA ARRAY COMPRIMENTO TOTAL
-    
-    public void PreencherComprimentoTotal(){
+
+    public void PreencherComprimentoTotal() {
         int j = 0;
         int i;
-        
-        for(i=0; i < this.comprimentoTotal.length; i ++){
-            if(i < Hlen *4){
-                
-               comprimentoTotal[i] = 0;
-                
-            }else{
-                comprimentoTotal[i] =  this.dados[j];                
+
+        for (i = 0; i < this.comprimentoTotal.length; i++) {
+            if (i < Hlen * 4) {
+
+                comprimentoTotal[i] = 0;
+
+            } else {
+                comprimentoTotal[i] = this.dados[j];
                 j++;
-            }            
-        }        
+            }
+        }
     }
-    
+
     public ArrayList<PacoteIpv4> Fragmentar() {
-        
-                
+
         boolean PrimeiroPacoteDaFragmentação = true;
         ArrayList<PacoteIpv4> p = new ArrayList<>();
         int TotalDeDados = 0;
         int comprimentoAtual = this.comprimentoTotal.length;
         PacoteIpv4 pacote;
-
+        CompletableFuture< Void> completableFuture;
         if (!this.canFragment) { // Nao posso fragmentar o pacote
             p.add(this);
         } else if (this.comprimentoTotal.length <= mtu) {  // MTU == 1500 bytes
             p.add(this);
         } else {      // Preciso fragmentar
-            
-            int offSet = 0;  
-            
+
+            int offSet = 0;
+
             while (comprimentoAtual > mtu) {
-                
-                pacote = new PacoteIpv4(this.identificacao, this.restanteDaMensagem,this.ipv4Origem, this.ipv4Destino, this.protocolo,mtu);
-                
-                
+
+                pacote = new PacoteIpv4(this.identificacao, this.restanteDaMensagem, this.ipv4Origem, this.ipv4Destino, this.protocolo, mtu);
+
                 if (PrimeiroPacoteDaFragmentação) {
-                    
+
                     pacote.setOffSet(this.offSet);
                     pacote.setCanFragment(true);
                     pacote.setIsLast(false);
                     PrimeiroPacoteDaFragmentação = false;
                     pacote.setMensagemCompleta(this.mensagemCompleta);
-                    this.setDividirDados(22, this.Hlen,pacote);
-                     
-                    
-                } else { 
-                    
+                    this.setDividirDados(this.mtu, this.Hlen, pacote);
+                    pacote.CalcularChecksum();                    
+                } else {
+
                     if (TotalDeDados % 8 == 0) {
 
                         offSet = TotalDeDados / 8;
-                    
+
                     } else {
-                        
 
                         offSet = TotalDeDados % 8;
                     }
@@ -122,13 +118,13 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
                     pacote.setCanFragment(true);
                     pacote.setIsLast(false);
                     pacote.setMensagemCompleta(this.mensagemCompleta);
-                    this.setDividirDados(22, this.Hlen,pacote);                   
-                    
-                }                
+                    this.setDividirDados(this.mtu, this.Hlen, pacote);
+                    pacote.CalcularChecksum();                    
+                }
                 p.add(pacote);
-                TotalDeDados = TotalDeDados + (mtu - this.Hlen * 4);
-                comprimentoAtual = (comprimentoAtual - (mtu - this.Hlen * 4) ) ;
-                
+                TotalDeDados = TotalDeDados + (this.mtu - this.Hlen * 4);
+                comprimentoAtual = (comprimentoAtual - (this.mtu - this.Hlen * 4));
+
             }    // Se saiu do while significa que é o último pacote da fragmentação
             if (TotalDeDados % 8 == 0) {
 
@@ -137,8 +133,8 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
 
                 offSet = TotalDeDados % 8;
             }
-            
-            pacote = new PacoteIpv4(this.identificacao, restanteDaMensagem,this.ipv4Origem, this.ipv4Destino, this.protocolo,mtu);
+
+            pacote = new PacoteIpv4(this.identificacao, restanteDaMensagem, this.ipv4Origem, this.ipv4Destino, this.protocolo, this.mtu);
             pacote.setCanFragment(true);
             pacote.setIsLast(true);
             pacote.setRestanteDaMensagem("Fim da mensagem");
@@ -147,9 +143,9 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
             pacote.setComprimentoTotal(this.comprimentoTotal);
             pacote.setOffSet(offSet); // Divisão Inteira 
             pacote.setMensagemCompleta(this.mensagemCompleta);
+            pacote.CalcularChecksum();            
             p.add(pacote);
-           
-            
+
         } // fora do else
         return p;
     }
@@ -159,97 +155,90 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         if (!p.isLast) { // Se nao for o ultimo pacote, fragmentar as informações
 
             int soDados = MTU - hlen * 4; // QUANTOS DE DADOS POR PACOTE 
-                        
+
             int j = 0;
             int k = 0;
             byte[] DadosPacoteAtual = new byte[soDados];
             byte[] comprimentoTotalAtual = new byte[MTU];
-            byte[] dadosRestantes = new byte [this.RestanteDosDados.length - soDados];
+            byte[] dadosRestantes = new byte[this.RestanteDosDados.length - soDados];
             byte[] comprimentoTotalProximoPacote = new byte[this.RestanteDosDados.length - soDados + hlen * 4];
-            String antes, depois;        
-                    
-           
-            System.out.println("");
-           
-            
+            String antes, depois;
+
+
             for (int i = 0; i < comprimentoTotal.length; i++) {
 
-                if (i >= hlen * 4  && i < hlen * 4 + soDados) { //  Cabeçalho < dados para pacote < dados restates  
-                    
-                    DadosPacoteAtual[k] = this.comprimentoTotal[i];                    
-                    k++;
-                    
+                if (i >= hlen * 4 && i < hlen * 4 + soDados) { //  Cabeçalho < dados para pacote < dados restates  
 
-                } else if (i >= (hlen * 4 + soDados) ) { // Restantes Dos dados
-                    
-                    
-                    dadosRestantes[j] = this.comprimentoTotal[i];                   
-                    comprimentoTotalProximoPacote[i-soDados] = this.comprimentoTotal[i];                   
+                    DadosPacoteAtual[k] = this.comprimentoTotal[i];
+                    k++;
+
+                } else if (i >= (hlen * 4 + soDados)) { // Restantes Dos dados
+
+                    dadosRestantes[j] = this.comprimentoTotal[i];
+                    comprimentoTotalProximoPacote[i - soDados] = this.comprimentoTotal[i];
                     j++;
                 }
-                
-                if (i < hlen * 4 + soDados ) {  // Preencher o comprimento Total do pacote
+
+                if (i < hlen * 4 + soDados) {  // Preencher o comprimento Total do pacote
 
                     comprimentoTotalAtual[i] = this.comprimentoTotal[i];
-                    
+
                 }
-                if( i < hlen * 4){
-                    
+                if (i < hlen * 4) {
+
                     comprimentoTotalProximoPacote[i] = this.comprimentoTotal[i]; // Comprimento Total Restante Nos PacoteIpv4                    
-                }                
+                }
             }
-            
-            
+
             antes = new String(DadosPacoteAtual, StandardCharsets.UTF_8);   // Mensagem que ta no pacote
-            primeiraParteMensagem = antes;           
+            primeiraParteMensagem = antes;
             p.setPrimeiraParteMensagem(primeiraParteMensagem);
-            
-                          // Mensagem para o proximo pacote
-            
+
+            // Mensagem para o proximo pacote
             depois = new String(dadosRestantes, StandardCharsets.UTF_8);
             restanteDaMensagem = depois;
             p.setRestanteDaMensagem(depois);
-                        
-            RestanteDosDados =  dadosRestantes;                                        // restante da mensagem em bytes    
+
+            RestanteDosDados = dadosRestantes;                                        // restante da mensagem em bytes    
             p.setRestanteDosDados(dadosRestantes);
-                        
+
             dados = DadosPacoteAtual;                                                 // Mensagem do pacote atual em bytes
-            p.setDados(DadosPacoteAtual );            
+            p.setDados(DadosPacoteAtual);
             comprimentoTotal = comprimentoTotalAtual;                                 // comprimento total em bytes 
-            
-            p.setComprimentoTotal(comprimentoTotalAtual);  
-            
+
+            p.setComprimentoTotal(comprimentoTotalAtual);
+
             comprimentoTotal = comprimentoTotalProximoPacote;                        // Comprimento Total Restante Nos PacoteIpv4
-                        
+
         }
     }
 
-    public void  CalcularChecksum() {
+    public void CalcularChecksum() {
 
         int linhas = 10;
         int colunas = 4;
-        char [][] matStr = new char [linhas][colunas];
-        int [][] matInt;
-        int [] somaDec = new int[colunas];
-        int [] copiaSomaDec = new int[colunas];
-        char [] somaHex;
+        char[][] matStr = new char[linhas][colunas];
+        int[][] matInt;
+        int[] somaDec = new int[colunas];
+        int[] copiaSomaDec = new int[colunas];
+        char[] somaHex;
 
         //preenche matriz de char's
         //primeira linha da matriz
         matStr[0][0] = Integer.toHexString(VER).charAt(0);
         matStr[0][1] = Integer.toHexString(Hlen).charAt(0);
-       if(Integer.toHexString(servico).length() == 2){
-           matStr[0][2] = Integer.toHexString(servico).charAt(0);
-           matStr[0][3] = Integer.toHexString(servico).charAt(1);
-       } else {
-           matStr[0][2] = '0';
-           matStr[0][3] = Integer.toHexString(servico).charAt(0);
-       }
+        if (Integer.toHexString(servico).length() == 2) {
+            matStr[0][2] = Integer.toHexString(servico).charAt(0);
+            matStr[0][3] = Integer.toHexString(servico).charAt(1);
+        } else {
+            matStr[0][2] = '0';
+            matStr[0][3] = Integer.toHexString(servico).charAt(0);
+        }
 
-       //segunda linha da matriz
-        int tamComprimento = Integer.toHexString(comprimentoTotal.length).length()-1;
-        for(int i = colunas-1; i >= 0; i--){
-            if(tamComprimento >=0){
+        //segunda linha da matriz
+        int tamComprimento = Integer.toHexString(comprimentoTotal.length).length() - 1;
+        for (int i = colunas - 1; i >= 0; i--) {
+            if (tamComprimento >= 0) {
                 matStr[1][i] = Integer.toHexString(comprimentoTotal.length).charAt(tamComprimento);
                 tamComprimento--;
             } else {
@@ -258,9 +247,9 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         }
 
         //terceira linha da matriz
-        int tamIdentificacao = Integer.toHexString(identificacao).length()-1;
-        for(int i = colunas-1; i >= 0; i--){
-            if(tamIdentificacao >=0){
+        int tamIdentificacao = Integer.toHexString(identificacao).length() - 1;
+        for (int i = colunas - 1; i >= 0; i--) {
+            if (tamIdentificacao >= 0) {
                 matStr[2][i] = Integer.toHexString(identificacao).charAt(tamIdentificacao);
                 tamIdentificacao--;
             } else {
@@ -269,29 +258,29 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         }
 
         //quarta linha da matriz
-        char [] flags =  new char [4];           // 3 bits de flags e 1 bit do offset
+        char[] flags = new char[4];           // 3 bits de flags e 1 bit do offset
         flags[0] = Integer.toString(reservado).charAt(0);
-        if(canFragment == true){
+        if (canFragment == true) {
             flags[1] = '0';
         } else {
             flags[1] = '1';
         }
-        if(isLast == true){
+        if (isLast == true) {
             flags[2] = '0';
         } else {
             flags[2] = '1';
         }
-        if(Integer.toHexString(offSet).length() == 4){
+        if (Integer.toHexString(offSet).length() == 4) {
             flags[3] = Integer.toHexString(offSet).charAt(0);
         } else {
             flags[3] = '0';
         }
         String flagString = new String(flags);
-        matStr[3][0] = Integer.toHexString(Integer.parseInt(flagString,2)).charAt(0);
+        matStr[3][0] = Integer.toHexString(Integer.parseInt(flagString, 2)).charAt(0);
 
-        int tamOffset = Integer.toHexString(offSet).length()-1;
-        for(int i = colunas-1; i > 0; i--){
-            if(tamOffset >=0){
+        int tamOffset = Integer.toHexString(offSet).length() - 1;
+        for (int i = colunas - 1; i > 0; i--) {
+            if (tamOffset >= 0) {
                 matStr[3][i] = Integer.toHexString(offSet).charAt(tamOffset);
                 tamOffset--;
             } else {
@@ -300,14 +289,14 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         }
 
         //quinta linha da matriz
-        if(Integer.toHexString(tempoDeVida).length() == 2){
+        if (Integer.toHexString(tempoDeVida).length() == 2) {
             matStr[4][0] = Integer.toHexString(tempoDeVida).charAt(0);
             matStr[4][1] = Integer.toHexString(tempoDeVida).charAt(1);
         } else {
             matStr[4][0] = '0';
             matStr[4][1] = Integer.toHexString(tempoDeVida).charAt(0);
         }
-        if(Integer.toHexString(protocolo).length() == 2){
+        if (Integer.toHexString(protocolo).length() == 2) {
             matStr[4][2] = Integer.toHexString(protocolo).charAt(0);
             matStr[4][3] = Integer.toHexString(protocolo).charAt(1);
         } else {
@@ -316,9 +305,9 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         }
 
         //sexta linha da matriz
-        Integer [] numerosIpOrigem = convertIpToArrayOfInteger(ipv4Origem);
+        Integer[] numerosIpOrigem = convertIpToArrayOfInteger(ipv4Origem);
         //primera parte do ipv4Origem
-        if(Integer.toHexString(numerosIpOrigem[0]).length() == 2){
+        if (Integer.toHexString(numerosIpOrigem[0]).length() == 2) {
             matStr[5][0] = Integer.toHexString(numerosIpOrigem[0]).charAt(0);
             matStr[5][1] = Integer.toHexString(numerosIpOrigem[0]).charAt(1);
         } else {
@@ -326,9 +315,9 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
             matStr[5][1] = Integer.toHexString(numerosIpOrigem[0]).charAt(0);
         }
         //segunda parte do ipv4Origem
-        if(Integer.toHexString(numerosIpOrigem[1]).length() == 2){
+        if (Integer.toHexString(numerosIpOrigem[1]).length() == 2) {
             matStr[5][2] = Integer.toHexString(numerosIpOrigem[1]).charAt(0);
-            matStr[5][3] = Integer.toHexString(numerosIpOrigem[1]).charAt(1);
+            matStr[5][3] = Integer.toHexString(numerosIpOrigem[1]).charAt(1);          
         } else {
             matStr[5][2] = '0';
             matStr[5][3] = Integer.toHexString(numerosIpOrigem[1]).charAt(0);
@@ -336,26 +325,26 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
 
         //setima linha da matriz
         //terceira parte do ipv4Origem
-        if(Integer.toHexString(numerosIpOrigem[2]).length() == 2){
+        if (Integer.toHexString(numerosIpOrigem[2]).length() == 2) {
             matStr[6][0] = Integer.toHexString(numerosIpOrigem[2]).charAt(0);
-            matStr[6][1] = Integer.toHexString(numerosIpOrigem[2]).charAt(1);
+            matStr[6][1] = Integer.toHexString(numerosIpOrigem[2]).charAt(1);           
         } else {
             matStr[6][0] = '0';
             matStr[6][1] = Integer.toHexString(numerosIpOrigem[2]).charAt(0);
         }
         //quarta parte do ipv4Origem
-        if(Integer.toHexString(numerosIpOrigem[1]).length() == 2){
+        if (Integer.toHexString(numerosIpOrigem[3]).length() == 2) {
             matStr[6][2] = Integer.toHexString(numerosIpOrigem[3]).charAt(0);
-            matStr[6][3] = Integer.toHexString(numerosIpOrigem[3]).charAt(1);
+            matStr[6][3] = Integer.toHexString(numerosIpOrigem[3]).charAt(1);          
         } else {
             matStr[6][2] = '0';
             matStr[6][3] = Integer.toHexString(numerosIpOrigem[3]).charAt(0);
         }
 
         //oitava linha da matriz
-        Integer [] numerosIpDestino = convertIpToArrayOfInteger(ipv4Destino);
+        Integer[] numerosIpDestino = convertIpToArrayOfInteger(ipv4Destino);
         //primera parte do ipv4Destino
-        if(Integer.toHexString(numerosIpDestino[0]).length() == 2){
+        if (Integer.toHexString(numerosIpDestino[0]).length() == 2) {
             matStr[7][0] = Integer.toHexString(numerosIpDestino[0]).charAt(0);
             matStr[7][1] = Integer.toHexString(numerosIpDestino[0]).charAt(1);
         } else {
@@ -363,7 +352,7 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
             matStr[7][1] = Integer.toHexString(numerosIpDestino[0]).charAt(0);
         }
         //segunda parte do ipv4Origem
-        if(Integer.toHexString(numerosIpDestino[1]).length() == 2){
+        if (Integer.toHexString(numerosIpDestino[1]).length() == 2) {
             matStr[7][2] = Integer.toHexString(numerosIpDestino[1]).charAt(0);
             matStr[7][3] = Integer.toHexString(numerosIpDestino[1]).charAt(1);
         } else {
@@ -373,7 +362,7 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
 
         //nona linha da matriz
         //terceira parte do ipv4Destino
-        if(Integer.toHexString(numerosIpDestino[2]).length() == 2){
+        if (Integer.toHexString(numerosIpDestino[2]).length() == 2) {
             matStr[8][0] = Integer.toHexString(numerosIpDestino[2]).charAt(0);
             matStr[8][1] = Integer.toHexString(numerosIpDestino[2]).charAt(1);
         } else {
@@ -381,7 +370,7 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
             matStr[8][1] = Integer.toHexString(numerosIpDestino[2]).charAt(0);
         }
         //quarta parte do ipv4Destino
-        if(Integer.toHexString(numerosIpDestino[1]).length() == 2){
+        if (Integer.toHexString(numerosIpDestino[3]).length() == 2) {
             matStr[8][2] = Integer.toHexString(numerosIpDestino[3]).charAt(0);
             matStr[8][3] = Integer.toHexString(numerosIpDestino[3]).charAt(1);
         } else {
@@ -390,9 +379,9 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         }
 
         //decima linha da matriz (checksum)
-        int tamChecksum = Integer.toHexString(checksum).length()-1;
-        for(int i = colunas-1; i >= 0; i--){
-            if(tamChecksum >=0){
+        int tamChecksum = Integer.toHexString(checksum).length() - 1;
+        for (int i = colunas - 1; i >= 0; i--) {
+            if (tamChecksum >= 0) {
                 matStr[9][i] = Integer.toHexString(checksum).charAt(tamChecksum);
                 tamChecksum--;
             } else {
@@ -400,21 +389,19 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
             }
         }
 
-
         //criar matriz decimal a partir da matriz de caracteres
         matInt = criarMatrizNumerica(matStr, linhas, colunas);
 
         //somar colunas da matriz decimal e armazenar em vetor decimal
-        for(int i = colunas-1; i >= 0; i--){
-            for(int j = 0; j < linhas; j++){
+        for (int i = colunas - 1; i >= 0; i--) {
+            for (int j = 0; j < linhas; j++) {
                 somaDec[i] = somaDec[i] + matInt[j][i];
             }
         }
 
-        for(int i = 0; i < somaDec.length; i++){                //guardando soma original das colunas
+        for (int i = 0; i < somaDec.length; i++) {                //guardando soma original das colunas
             copiaSomaDec[i] = somaDec[i];
         }
-
 
         //realiza o calculo do que sobe e  do que fica no vetor somaDec e retorna no vetor somaHex o resultado em hexa
         somaHex = calculaSomahexa(somaDec, colunas);
@@ -425,50 +412,40 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         //transforma somaHex em uma string
         String somaHexStr = new String(somaHex);
 
+       
+
 //        converte o string em inteiro e adiciona ao checksum
-        checksum = Integer.parseInt(somaHexStr,16);
+        checksum = Integer.parseInt(somaHexStr, 16);
 
-
-
-//        System.out.println(checksumBinStr.substring(0,8));
-//        System.out.println(checksumBinStr.substring(8,16));
+//        for(int i = 0; i < linhas; i++){
+//            for(int j = 0; j < colunas; j++){
+//                System.out.print(matStr[i][j] + ", ");
 //
-//        System.out.println(Integer.parseInt(checksumBinStr.substring(0,8),2));
-//        System.out.println(Integer.parseInt(checksumBinStr.substring(8,16),2));
-        //checksum[0] = Byte.parseByte(checksumBinStr.substring(0,5),2);
-
-
-        for(int i = 0; i < linhas; i++){
-            for(int j = 0; j < colunas; j++){
-                System.out.print(matStr[i][j] + ", ");
-
-            }
-            System.out.println();
-        }
-        System.out.println("================================");
-
-        for(int i = 0; i < linhas; i++){
-            for(int j = 0; j < colunas; j++){
-                System.out.print(matInt[i][j] + ", ");
-
-            }
-            System.out.println();
-        }
-        System.out.println();
-        for(int i = 0; i < copiaSomaDec.length; i++){
-            System.out.print(copiaSomaDec[i] + ", ");
-        }
-        System.out.println();
-        for(int i = 0; i < somaHex.length; i++){
-            System.out.print(somaHex[i] + ", ");
-        }
-        System.out.println(somaHex);
-        System.out.println();
-
-       // System.out.println(Integer.parseInt(somaHexStr,16));
-        System.out.println(checksum);
+//            }
+//            System.out.println();
+//        }
+//        System.out.println("================================");
+//
+//        for(int i = 0; i < linhas; i++){
+//            for(int j = 0; j < colunas; j++){
+//                System.out.print(matInt[i][j] + ", ");
+//
+//            }
+//            System.out.println();
+//        }
+//        System.out.println();
+//        for(int i = 0; i < copiaSomaDec.length; i++){
+//            System.out.print(copiaSomaDec[i] + ", ");
+//        }
+//        System.out.println();
+//        for(int i = 0; i < somaHex.length; i++){
+//            System.out.print(somaHex[i] + ", ");
+//        }
+//        System.out.println(somaHex);
+//        System.out.println();
+        // System.out.println(Integer.parseInt(somaHexStr,16));
+        //System.out.println(checksum);
         //System.out.println(Integer.toBinaryString(checksum));
-
     }
 
     public static Integer[] convertIpToArrayOfInteger(String ip) {
@@ -477,109 +454,109 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         return splittedIpIntegers.toArray(new Integer[0]);
     }
 
-    public char [] calculaSomahexa(int [] somaDec, int colunas){
-        char [] somaHex = new char[colunas];
+    public char[] calculaSomahexa(int[] somaDec, int colunas) {
+        char[] somaHex = new char[colunas];
         int sobe = 0;
-        int [] copiaSomaDec = new int[colunas];
+        int[] copiaSomaDec = new int[colunas];
 
-        for(int i = 0; i < somaDec.length; i++){                //guardando soma original das colunas
+        for (int i = 0; i < somaDec.length; i++) {                //guardando soma original das colunas
             copiaSomaDec[i] = somaDec[i];
         }
 
-        for(int i = colunas-1; i >= 0; i--){
-          if(Integer.toHexString(somaDec[i]).length() == 1){                //se a string hexadecimal tiver um so caracter
-              somaHex[i] = Integer.toHexString(somaDec[i]).charAt(0);
-              sobe = 0;
-          } else{                                                           //se a string hexadecimal tiver dois caracteres
-              somaHex[i] = Integer.toHexString(somaDec[i]).charAt(1);
-              sobe = encontraValorChar(Integer.toHexString(somaDec[i]).charAt(0));
-          }
-          if(i > 0){                                                    //enquanto n chega na ultima coluna sobe eh adicionado na coluna seguinte
-              somaDec[i-1] = somaDec[i-1] + sobe;
-          } else {                                                       //quando chegamos na ultima coluna sobe tem q ser adicionado a primeira coluna(a mais a direita)
-              somaDec[colunas-1] = somaDec[colunas-1] + sobe;
-              if(Integer.toHexString(somaDec[colunas-1]).length() == 1){                //se a string hexadecimal tiver um so caracter
-                  somaHex[colunas-1] = Integer.toHexString(somaDec[colunas-1]).charAt(0);
-              } else{                                                           //se a string hexadecimal tiver dois caracteres
-                  copiaSomaDec[colunas-1] = copiaSomaDec[colunas-1] + sobe;      //adiciono o sobra a ultima coluna dda copia do vetor decimal e faco um novo preenchimento do vetor hexa
-                  return verificacaoCalculoSomaHexa(copiaSomaDec, colunas);
-              }
-          }
-        }
-        return somaHex;
-    }
-
-    public char [] verificacaoCalculoSomaHexa(int [] somaDec, int colunas){
-        char [] somaHex = new char[colunas];
-        int sobe = 0;
-
-        for(int i = colunas-1; i >= 0; i--){
-            if(Integer.toHexString(somaDec[i]).length() == 1){                //se a string hexadecimal tiver um so caracter
+        for (int i = colunas - 1; i >= 0; i--) {
+            if (Integer.toHexString(somaDec[i]).length() == 1) {                //se a string hexadecimal tiver um so caracter
                 somaHex[i] = Integer.toHexString(somaDec[i]).charAt(0);
                 sobe = 0;
-            } else{                                                           //se a string hexadecimal tiver dois caracteres
+            } else {                                                           //se a string hexadecimal tiver dois caracteres
                 somaHex[i] = Integer.toHexString(somaDec[i]).charAt(1);
                 sobe = encontraValorChar(Integer.toHexString(somaDec[i]).charAt(0));
             }
-            if(i > 0){                                                    //enquanto n chega na ultima coluna sobe eh adicionado na coluna seguinte
-                somaDec[i-1] = somaDec[i-1] + sobe;
+            if (i > 0) {                                                    //enquanto n chega na ultima coluna sobe eh adicionado na coluna seguinte
+                somaDec[i - 1] = somaDec[i - 1] + sobe;
+            } else {                                                       //quando chegamos na ultima coluna sobe tem q ser adicionado a primeira coluna(a mais a direita)
+                somaDec[colunas - 1] = somaDec[colunas - 1] + sobe;
+                if (Integer.toHexString(somaDec[colunas - 1]).length() == 1) {                //se a string hexadecimal tiver um so caracter
+                    somaHex[colunas - 1] = Integer.toHexString(somaDec[colunas - 1]).charAt(0);
+                } else {                                                           //se a string hexadecimal tiver dois caracteres
+                    copiaSomaDec[colunas - 1] = copiaSomaDec[colunas - 1] + sobe;      //adiciono o sobra a ultima coluna dda copia do vetor decimal e faco um novo preenchimento do vetor hexa
+                    return verificacaoCalculoSomaHexa(copiaSomaDec, colunas);
+                }
             }
         }
         return somaHex;
     }
 
-    public int[][] criarMatrizNumerica( char  [][] matStr, int linhas, int colunas){
-        int [][] matInt = new int [linhas][colunas];
+    public char[] verificacaoCalculoSomaHexa(int[] somaDec, int colunas) {
+        char[] somaHex = new char[colunas];
+        int sobe = 0;
 
-        for(int i = 0; i < linhas; i++){
-            for(int j = 0; j < colunas; j++){
-                matInt[i][j] = encontraValorChar(matStr [i][j]);
+        for (int i = colunas - 1; i >= 0; i--) {
+            if (Integer.toHexString(somaDec[i]).length() == 1) {                //se a string hexadecimal tiver um so caracter
+                somaHex[i] = Integer.toHexString(somaDec[i]).charAt(0);
+                sobe = 0;
+            } else {                                                           //se a string hexadecimal tiver dois caracteres
+                somaHex[i] = Integer.toHexString(somaDec[i]).charAt(1);
+                sobe = encontraValorChar(Integer.toHexString(somaDec[i]).charAt(0));
+            }
+            if (i > 0) {                                                    //enquanto n chega na ultima coluna sobe eh adicionado na coluna seguinte
+                somaDec[i - 1] = somaDec[i - 1] + sobe;
+            }
+        }
+        return somaHex;
+    }
+
+    public int[][] criarMatrizNumerica(char[][] matStr, int linhas, int colunas) {
+        int[][] matInt = new int[linhas][colunas];
+
+        for (int i = 0; i < linhas; i++) {
+            for (int j = 0; j < colunas; j++) {
+                matInt[i][j] = encontraValorChar(matStr[i][j]);
             }
         }
 
         return matInt;
     }
 
-    public void calculaComplementoDeUm(char [] somaHex){
-        for(int i = 0; i < somaHex.length; i++){
-            if(somaHex[i] == 'f'){
+    public void calculaComplementoDeUm(char[] somaHex) {
+        for (int i = 0; i < somaHex.length; i++) {
+            if (somaHex[i] == 'f') {
                 somaHex[i] = '0';
-            } else if(somaHex[i] == 'e'){
+            } else if (somaHex[i] == 'e') {
                 somaHex[i] = '1';
-            } else if(somaHex[i] == 'd'){
+            } else if (somaHex[i] == 'd') {
                 somaHex[i] = '2';
-            } else if(somaHex[i] == 'c'){
+            } else if (somaHex[i] == 'c') {
                 somaHex[i] = '3';
-            } else if(somaHex[i] == 'b'){
+            } else if (somaHex[i] == 'b') {
                 somaHex[i] = '4';
-            } else if(somaHex[i] == 'a'){
+            } else if (somaHex[i] == 'a') {
                 somaHex[i] = '5';
-            } else if(somaHex[i] == '9'){
+            } else if (somaHex[i] == '9') {
                 somaHex[i] = '6';
-            } else if(somaHex[i] == '8'){
+            } else if (somaHex[i] == '8') {
                 somaHex[i] = '7';
-            } else if(somaHex[i] == '7'){
+            } else if (somaHex[i] == '7') {
                 somaHex[i] = '8';
-            } else if(somaHex[i] == '6'){
+            } else if (somaHex[i] == '6') {
                 somaHex[i] = '9';
-            } else if(somaHex[i] == '5'){
+            } else if (somaHex[i] == '5') {
                 somaHex[i] = 'a';
-            } else if(somaHex[i] == '4'){
+            } else if (somaHex[i] == '4') {
                 somaHex[i] = 'b';
-            } else if(somaHex[i] == '3'){
+            } else if (somaHex[i] == '3') {
                 somaHex[i] = 'c';
-            } else if(somaHex[i] == '2'){
+            } else if (somaHex[i] == '2') {
                 somaHex[i] = 'd';
-            } else if(somaHex[i] == '1'){
+            } else if (somaHex[i] == '1') {
                 somaHex[i] = 'e';
-            } else if(somaHex[i] == '0'){
+            } else if (somaHex[i] == '0') {
                 somaHex[i] = 'f';
             }
         }
     }
 
-    public int encontraValorChar(char caracter){
-        switch (caracter){
+    public int encontraValorChar(char caracter) {
+        switch (caracter) {
             case '0':
                 return 0;
             case '1':
@@ -620,10 +597,10 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
 
     @Override
     public int compareTo(PacoteIpv4 p) {
-       
-        return ( this.offSet - p.getOffSet() ) ;
+
+        return (this.offSet - p.getOffSet());
     }
-    
+
     public byte getServico() {
         return servico;
     }
@@ -635,7 +612,7 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
     public void setMensagemCompleta(byte[] mensagemCompleta) {
         this.mensagemCompleta = mensagemCompleta;
     }
-    
+
     public byte[] getComprimentoTotal() {
         return comprimentoTotal;
     }
@@ -740,5 +717,4 @@ public class PacoteIpv4  implements Comparable< PacoteIpv4 >{
         this.restanteDaMensagem = restanteDaMensagem;
     }
 
-    
 }

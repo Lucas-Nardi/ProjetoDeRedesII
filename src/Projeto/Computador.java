@@ -1,5 +1,9 @@
 package Projeto;
 
+import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
+
+
 public class Computador  implements Observer{
     
     private CamadaRedes camadaRedes;
@@ -7,11 +11,11 @@ public class Computador  implements Observer{
     private CamadaTransporte camadaTransporte;
     private CamadaAplicacao camadaAplicacao;
 
-    public Computador(CamadaFisica barramento, String iPv4, String macAddress) {
+    public Computador(CamadaFisica barramento, String iPv4, String macAddress, ArrayList<ItensDaTabela> tabelaDeRoteamento) {
     
         this.camadaAplicacao = new CamadaAplicacao();
         this.camadaTransporte = new CamadaTransporte();
-        this.camadaRedes = new CamadaRedes(iPv4,26);        
+        this.camadaRedes = new CamadaRedes(iPv4,26,tabelaDeRoteamento);        
         this.camadaEnlace = new CamadaEnlace(barramento, macAddress,22);
         
         this.camadaAplicacao.setTransporte(camadaTransporte);
@@ -32,9 +36,17 @@ public class Computador  implements Observer{
     }
     
     @Override
-    public void Receive(Object mensagem) { // Receber pacote do barramento
-
-        camadaEnlace.ReceiveFisica(mensagem);
+    public void Receive(Object mensagem)
+    { 
+        try {
+            camadaEnlace.ReceiveFisica(mensagem);
+            
+        } catch (ExecutionException ex) {
+           
+        } catch (InterruptedException ex) {
+            
+        }
+        
     }
 
     public CamadaRedes getCamadaRedes() {

@@ -5,10 +5,13 @@ import java.util.ArrayList;
 public class CamadaFisica implements Observable{ // É o barramento
 
     ArrayList <Observer> observadores;
-    //ArrayList <Pacote> pacotes;
-    public CamadaFisica(){
+    String id;
+    
+    
+    public CamadaFisica(String id){
         
         observadores = new ArrayList<>();
+        this.id = id;
     }
     
     
@@ -48,22 +51,36 @@ public class CamadaFisica implements Observable{ // É o barramento
                         
                     }else{                        
                         
-                        comp.Receive(mensagem); // Recebe a mensagem do Barramento
+                        comp.Receive(mensagem); // Manda o pacote arp para todos os computadores que estão no barramento
                     }                
                 }
-                
                 if(mensagem instanceof PacoteIpv4){                    
                     
                     comp.Receive(mensagem);
                 }
             }
-            
             if(o instanceof Roteador){
                 
                 Roteador router = (Roteador) o;
                 router.Receive(mensagem); // Recebe a mensagem do barramento
-            }          
-        
+            } 
         }
     }
+
+    public ArrayList<Observer> getObservadores() {
+        return observadores;
+    }
+
+    public void setObservadores(ArrayList<Observer> observadores) {
+        this.observadores = observadores;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+    
 }
