@@ -15,12 +15,17 @@ public class FrontEnd {
         linha1.setInterFace("m2");
         tabelaDeRoteamento.add(linha1);
         
-        
         CamadaFisica barramento = new CamadaFisica("m2");
-        Computador comp1 = new Computador(barramento, "192.168.25.2", "MAC ORIGEM",tabelaDeRoteamento);
-        Computador comp2 = new Computador(barramento, "192.168.25.1", "MAC DESTINO",tabelaDeRoteamento);
+        
+        
+        
+        Computador comp1 = new Computador(barramento, "192.168.25.2", "E0:D5:5E:89:16:10",tabelaDeRoteamento);
+        Computador comp2 = new Computador(barramento, "192.168.25.1", "E0:D5:5E:89:16:10",tabelaDeRoteamento);
         barramento.attach(comp1);
         barramento.attach(comp2);        
+        Roteador roteador = new Roteador("192.168.0.1","E0:D5:5E:89:16:10",tabelaDeRoteamento);
+        roteador.adicionarBarramento(barramento);
+        
         Mensagem mensagem  = new Mensagem("Abacaxi","192.168.25.1");
         comp1.Send(mensagem);
        

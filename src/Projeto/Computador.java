@@ -2,6 +2,8 @@ package Projeto;
 
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 public class Computador  implements Observer{
@@ -30,9 +32,15 @@ public class Computador  implements Observer{
     }
     
     @Override
-    public void Send(Object mensagem) { // Enviar pacote para o barramento
+    public void Send(Object mensagem) { try {
+        // Enviar pacote para o barramento
         
         camadaAplicacao.SendTransporte(mensagem);
+        } catch (InterruptedException ex) {
+            
+        } catch (ExecutionException ex) {
+            
+        }
     }
     
     @Override

@@ -18,9 +18,9 @@ class CamadaRedes {
     String mascara;
     String mensagemOriginal;
     String netID;
+    String ipv4Roteador;
     HashMap<String, ArrayList<ArrayList<PacoteIpv4>>> mapping;
-    PacoteArp pacoteArp;
-        
+    PacoteArp pacoteArp;        
     ArrayList<ItensDaTabela> tabelaDeRoteamento;
     
     
@@ -174,8 +174,6 @@ class CamadaRedes {
                 resultadoAND = resultadoAND + resultado[i];
             }        
         }        
-        System.out.println(resultadoAND);        
-       
         
         return resultadoAND;
     }
@@ -285,21 +283,30 @@ class CamadaRedes {
             this.mensagemOriginal = m.getMensagem();
 
             resultado = pegarNetid(this.mascara, m.getIpv4Destino());
+            
             if(resultado.compareTo(this.netID) == 0){ // Mesma rede
                 
                 this.criarPacoteArp(1, ipv4, m.getIpv4Destino(), this.enlace.getMacAddress(), "0");
-            
-            }else{ // Esta em outra rede (Verificar a tabela de roteamento)
                 
-                for(ItensDaTabela i : tabelaDeRoteamento){
+                System.out.println("MESMA REDE");
+            
+            }else{ // Esta em outra rede (Verificar a tabela de roteamento) para pegar o ipv4 do roteador
+                
+                System.out.println("REDE DIFERENTE");
+                
+                
+                for(ItensDaTabela item : tabelaDeRoteamento){
                     
-                    resultado = pegarNetid(i.getMascara(), m.getIpv4Destino());
-                }
-                
-            }
-            // FAZER UMA OPERACAO AND COM O IP DESTINO E A MASCARA, SE DER O VALOR DA MASCARA Ë LOCAL SE NAO É ROTEADOR
+                    resultado = pegarNetid(item.getMascara(), m.getIpv4Destino());
+                    
+                    if(resultado.compareTo(item.getEnderecoDeRede() ) == 0){
+                        
+                        this.ipv4Roteador = item.getProximoSalto();
+                        this.criarPacoteArp(1, ipv4,item.getProximoSalto(), this.enlace.getMacAddress(), "0");
+                    }   
+                }                
+            }          
             
-            this.protocolo = protocolo;
             this.SendEnlace(pacoteArp);
 
         } else {       // Se a operacao for diferente de request == true , ela é repy tenho ja o macAddress do destino
@@ -309,6 +316,7 @@ class CamadaRedes {
                 ArrayList<PacoteIpv4> p = new ArrayList<>();
                 PacoteIpv4 pacote = new PacoteIpv4(numeroDaMensagem, mensagemOriginal, this.ipv4, pacoteArp.getIpV4Destino(), 1, this.enlace.getMtu());
                 pacote.PreencherComprimentoTotal();
+                pacote.setEndereçoRoteador(this.ipv4Roteador);
                 p = pacote.Fragmentar();
 
                 for (PacoteIpv4 pack : p) {

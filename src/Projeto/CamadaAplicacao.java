@@ -1,14 +1,12 @@
 package Projeto;
 
-import java.nio.charset.StandardCharsets;
-
-
+import java.util.concurrent.ExecutionException;
 
 class CamadaAplicacao {
 
     CamadaTransporte transporte;
     
-    void SendTransporte(Object mensagem) {
+    void SendTransporte(Object mensagem) throws InterruptedException, ExecutionException {
         
         this.transporte.ReceiveAplicacao(mensagem);
     }

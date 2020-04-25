@@ -29,6 +29,7 @@ public class PacoteIpv4 implements Comparable< PacoteIpv4> {
     String ipv4Destino;      // Setamos no inicio
     String primeiraParteMensagem;
     String restanteDaMensagem;
+    String endereçoRoteador;  // Endereço que o pacote terá para chegar ate o roteador
     int mtu;
 
     public PacoteIpv4(int numMensagem, Object mensagem, String ipv4Origem, String ipv4Destino, int protocolo, int mtu) {
@@ -103,7 +104,8 @@ public class PacoteIpv4 implements Comparable< PacoteIpv4> {
                     PrimeiroPacoteDaFragmentação = false;
                     pacote.setMensagemCompleta(this.mensagemCompleta);
                     this.setDividirDados(this.mtu, this.Hlen, pacote);
-                    pacote.CalcularChecksum();                    
+                    pacote.CalcularChecksum(); 
+                    pacote.setEndereçoRoteador(this.endereçoRoteador);
                 } else {
 
                     if (TotalDeDados % 8 == 0) {
@@ -119,7 +121,8 @@ public class PacoteIpv4 implements Comparable< PacoteIpv4> {
                     pacote.setIsLast(false);
                     pacote.setMensagemCompleta(this.mensagemCompleta);
                     this.setDividirDados(this.mtu, this.Hlen, pacote);
-                    pacote.CalcularChecksum();                    
+                    pacote.CalcularChecksum();
+                    pacote.setEndereçoRoteador(this.endereçoRoteador);                    
                 }
                 p.add(pacote);
                 TotalDeDados = TotalDeDados + (this.mtu - this.Hlen * 4);
@@ -143,7 +146,8 @@ public class PacoteIpv4 implements Comparable< PacoteIpv4> {
             pacote.setComprimentoTotal(this.comprimentoTotal);
             pacote.setOffSet(offSet); // Divisão Inteira 
             pacote.setMensagemCompleta(this.mensagemCompleta);
-            pacote.CalcularChecksum();            
+            pacote.CalcularChecksum();
+            pacote.setEndereçoRoteador(this.endereçoRoteador);    
             p.add(pacote);
 
         } // fora do else
@@ -717,4 +721,11 @@ public class PacoteIpv4 implements Comparable< PacoteIpv4> {
         this.restanteDaMensagem = restanteDaMensagem;
     }
 
+    public String getEndereçoRoteador() {
+        return endereçoRoteador;
+    }
+
+    public void setEndereçoRoteador(String endereçoRoteador) {
+        this.endereçoRoteador = endereçoRoteador;
+    }
 }

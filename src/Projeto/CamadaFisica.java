@@ -2,22 +2,20 @@ package Projeto;
 
 import java.util.ArrayList;
 
-public class CamadaFisica implements Observable{ // É o barramento
+public class CamadaFisica implements Observable { // É o barramento
 
-    ArrayList <Observer> observadores;
+    ArrayList<Observer> observadores;
     String id;
-    
-    
-    public CamadaFisica(String id){
-        
+
+    public CamadaFisica(String id) {
+
         observadores = new ArrayList<>();
         this.id = id;
     }
-    
-    
+
     @Override
     public void attach(Observer o) {
-        
+
         observadores.add(o);
     }
 
@@ -28,42 +26,52 @@ public class CamadaFisica implements Observable{ // É o barramento
 
     @Override
     public void notifyObserver(Object mensagem) {
-       
+
         PacoteArp arp;
         PacoteIpv4 ipv4;
-        
-        for(Observer o: observadores){
-            
-            if(o instanceof Computador){
-                
-                Computador comp = (Computador) o;
-                
-                if(mensagem instanceof PacoteArp){                
-                    
-                    arp = (PacoteArp) mensagem;
-                    
-                    if(!arp.getMacDestino().equals("0")){ // MEU ARP É O REPLY
-                        
-                        if(comp.getCamadaRedes().getIpv4().equals(arp.getIpV4Origem())){ // SO ENVIAR O ARP REPLY PARA O COMPUTADOR DE ORIGEM
-                            
+
+        for (Observer o : observadores) {
+
+            if (mensagem instanceof PacoteArp) {
+
+                arp = (PacoteArp) mensagem;
+
+                if (o instanceof Computador) {
+
+                    Computador comp = (Computador) o;
+                    if (!arp.getMacDestino().equals("0")) { // MEU ARP É O REPLY
+
+                        if (comp.getCamadaRedes().getIpv4().equals(arp.getIpV4Origem())) { // SO ENVIAR O ARP REPLY PARA O COMPUTADOR DE ORIGEM
+
                             comp.Receive(mensagem); // Recebe a mensagem do Barramento
                         }
-                        
-                    }else{                        
-                        
+
+                    } else {
+
                         comp.Receive(mensagem); // Manda o pacote arp para todos os computadores que estão no barramento
-                    }                
+                    }
                 }
-                if(mensagem instanceof PacoteIpv4){                    
-                    
+                if (o instanceof Roteador) {
+
+                    Roteador router = (Roteador) o;
+                    router.ReceiveData(mensagem,this.getId()); // Recebe a mensagem do barramento
+                }
+
+            }
+            if (mensagem instanceof PacoteIpv4) {
+
+                if (o instanceof Computador) {
+
+                    Computador comp = (Computador) o;
                     comp.Receive(mensagem);
                 }
+                if (o instanceof Roteador) {
+
+                    Roteador router = (Roteador) o;
+                    router.Receive(mensagem); // Recebe a mensagem do barramento
+                }
             }
-            if(o instanceof Roteador){
-                
-                Roteador router = (Roteador) o;
-                router.Receive(mensagem); // Recebe a mensagem do barramento
-            } 
+
         }
     }
 
@@ -82,5 +90,5 @@ public class CamadaFisica implements Observable{ // É o barramento
     public void setId(String id) {
         this.id = id;
     }
-    
+
 }
