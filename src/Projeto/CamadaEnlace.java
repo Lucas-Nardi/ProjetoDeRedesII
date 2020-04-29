@@ -17,6 +17,7 @@ class CamadaEnlace {
     }
 
     void ReceiveRedes(Object mensagem) {
+        
         this.SendFisica(mensagem);
     }
 

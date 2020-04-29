@@ -19,12 +19,12 @@ class CamadaRedes {
     String mensagemOriginal;
     String netID;
     String ipv4Roteador;
+    String ipv4Destino;
     HashMap<String, ArrayList<ArrayList<PacoteIpv4>>> mapping;
-    PacoteArp pacoteArp;        
+    PacoteArp pacoteArp;
     ArrayList<ItensDaTabela> tabelaDeRoteamento;
-    
-    
-    public CamadaRedes(String ipv4, int valor,ArrayList<ItensDaTabela> tabelaDeRoteamento) {
+
+    public CamadaRedes(String ipv4, int valor) {
 
         numeroDaMensagem = 0;
         this.ipv4 = ipv4;
@@ -140,41 +140,41 @@ class CamadaRedes {
                 break;
         }
     }
-    
-    String pegarNetid(String ipv4_1, String ipv4_2){
-                
-        String ipv4_1_SemPonto[];       
+
+    String pegarNetid(String ipv4_1, String ipv4_2) {
+
+        String ipv4_1_SemPonto[];
         String ipv4_2_SemPonto[];
-        
+
         ipv4_1_SemPonto = ipv4_1.split("\\.");
         ipv4_2_SemPonto = ipv4_2.split("\\.");
-        
-        int ipv4_1_Decimal [] = new int[ipv4_1_SemPonto.length];
-        int ipv4_2_Decimal [] = new int[ipv4_1_SemPonto.length];
-        int resultado [] = new int[ipv4_1_SemPonto.length];
-        
+
+        int ipv4_1_Decimal[] = new int[ipv4_1_SemPonto.length];
+        int ipv4_2_Decimal[] = new int[ipv4_1_SemPonto.length];
+        int resultado[] = new int[ipv4_1_SemPonto.length];
+
         for (int i = 0; i < ipv4_1_SemPonto.length; i++) {
-            
+
             //System.out.println("-------------------------------------------------------------------");            
             ipv4_1_Decimal[i] = Integer.parseInt(ipv4_1_SemPonto[i]); // Transforma a cada parte do ipv4 em decimal            
             //System.out.println("Valor em Inteiro IPV4 1: " + ipv4_1_Decimal[i]);                        
-            ipv4_2_Decimal[i] = Integer.parseInt(ipv4_2_SemPonto[i]);        
+            ipv4_2_Decimal[i] = Integer.parseInt(ipv4_2_SemPonto[i]);
             //System.out.println("Valor em Inteiro IPV4 2: " + ipv4_2_Decimal[i]);
-            resultado[i] =  ipv4_2_Decimal[i] & ipv4_1_Decimal[i];         // Faz Operaçao AND
+            resultado[i] = ipv4_2_Decimal[i] & ipv4_1_Decimal[i];         // Faz Operaçao AND
             //System.out.println("Resultado em decimal : " + resultado[i]);                 
             //System.out.println();
         }
         String resultadoAND = "";
-        
-        for(int i = 0; i < resultado.length; i++){
-            
-            if(i < 3){
-                resultadoAND = resultadoAND + resultado[i]+".";
-            }else{
+
+        for (int i = 0; i < resultado.length; i++) {
+
+            if (i < 3) {
+                resultadoAND = resultadoAND + resultado[i] + ".";
+            } else {
                 resultadoAND = resultadoAND + resultado[i];
-            }        
-        }        
-        
+            }
+        }
+
         return resultadoAND;
     }
 
@@ -219,9 +219,13 @@ class CamadaRedes {
 
                 if (dadoFinal == dadoAtual) {  // Todos os Pacotes Chegaram preciso remover eles da lista
 
+                    System.out.println("CHEGOU TODOS OS PACOTES");
+                    System.out.println("ORGANIZANDO OS PACOTES");
+
                     listaPacotes.add(p);
 
-                    //Collections.sort(listaPacotes);
+                    Collections.sort(listaPacotes);
+
                     for (int i = 0; i < listaPacotes.size(); i++) {
 
                         pacote = listaPacotes.get(i);
@@ -270,7 +274,8 @@ class CamadaRedes {
 
         numeroDaMensagem++; // Recebi uma mensagem
         String resultado;
-        
+        int i = 1;
+
         if (mensagem instanceof Mensagem) {
             Mensagem m = (Mensagem) mensagem;
             this.arpRequest = m.isFazerArp();
@@ -281,48 +286,70 @@ class CamadaRedes {
             this.protocolo = protocolo;
             Mensagem m = (Mensagem) mensagem;
             this.mensagemOriginal = m.getMensagem();
+            this.ipv4Destino = m.getIpv4Destino();
 
             resultado = pegarNetid(this.mascara, m.getIpv4Destino());
-            
-            if(resultado.compareTo(this.netID) == 0){ // Mesma rede
-                
+            System.out.println("--------------------------------------------------------");
+            System.out.println("RECEBI UM DADO DA CAMADA DE TRANSPORTE");
+            System.out.println("SABER QUE TIPO DE ENTREGA O COMPUTADOR FARÁ (DIRETA OU INDIRETA)");
+            if (resultado.compareTo(this.netID) == 0) { // Mesma rede
+
+                System.out.println("ENTRA DIRETA");
+                System.out.println("CRIANDO PACOTE ARP: ");
                 this.criarPacoteArp(1, ipv4, m.getIpv4Destino(), this.enlace.getMacAddress(), "0");
-                
-                System.out.println("MESMA REDE");
-            
-            }else{ // Esta em outra rede (Verificar a tabela de roteamento) para pegar o ipv4 do roteador
-                
-                System.out.println("REDE DIFERENTE");
-                
-                
-                for(ItensDaTabela item : tabelaDeRoteamento){
-                    
+
+            } else { // Esta em outra rede (Verificar a tabela de roteamento) para pegar o ipv4 do roteador
+
+                System.out.println("ENTREGA INDIRETA");
+                System.out.println("CRIANDO PACOTE ARP: ");
+
+                for (ItensDaTabela item : tabelaDeRoteamento) {
+
                     resultado = pegarNetid(item.getMascara(), m.getIpv4Destino());
-                    
-                    if(resultado.compareTo(item.getEnderecoDeRede() ) == 0){
-                        
+
+                    if (resultado.compareTo(item.getEnderecoDeRede()) == 0) {
+
                         this.ipv4Roteador = item.getProximoSalto();
-                        this.criarPacoteArp(1, ipv4,item.getProximoSalto(), this.enlace.getMacAddress(), "0");
-                    }   
-                }                
-            }          
-            
+                        this.criarPacoteArp(1, ipv4, ipv4Roteador, this.enlace.getMacAddress(), "0");
+                    }
+                }
+            }
+            System.out.println("ENVIANDO ARP REQUEST");
+            System.out.println("ORIGEM DO PACOTE: " + this.pacoteArp.getIpV4Origem());
+            System.out.println("DESTINO DO PACOTE: " + this.pacoteArp.getIpV4Destino());
+            System.out.println("MAC ADDRESS DESTINO: " + this.pacoteArp.getMacDestino());
+            System.out.println("--------------------------------------------------------");
             this.SendEnlace(pacoteArp);
 
         } else {       // Se a operacao for diferente de request == true , ela é repy tenho ja o macAddress do destino
 
             if (this.pacoteArp.getIpV4Origem().equals(this.ipv4)) {
 
+                System.out.println("CRIANDO O PACOTE IPV4");
                 ArrayList<PacoteIpv4> p = new ArrayList<>();
-                PacoteIpv4 pacote = new PacoteIpv4(numeroDaMensagem, mensagemOriginal, this.ipv4, pacoteArp.getIpV4Destino(), 1, this.enlace.getMtu());
+                PacoteIpv4 pacote = new PacoteIpv4(numeroDaMensagem, mensagemOriginal, this.ipv4, ipv4Destino, 1, this.enlace.getMtu());
                 pacote.PreencherComprimentoTotal();
                 pacote.setEndereçoRoteador(this.ipv4Roteador);
+
                 p = pacote.Fragmentar();
-
+   
                 for (PacoteIpv4 pack : p) {
-                    this.SendEnlace(pack);
-                }
+                    if (i == 0) {
 
+                        System.out.println("");
+                        System.out.println("ENVIANDO O PACOTE IPV4 " + i + " PARA O BARRAMENTO ");
+                        System.out.println("--------------------------------------------------------");
+                    } else {
+
+                        System.out.println("");
+                        System.out.println("");
+                        System.out.println("ENVIANDO O PACOTE IPV4 " + i + " PARA O BARRAMENTO ");
+                        System.out.println("--------------------------------------------------------");
+                    }
+
+                    this.SendEnlace(pack);
+                    i++;
+                }
             }
         }
         // UDP, TCP/IP protocolos que vem da camda de transporte
@@ -340,29 +367,57 @@ class CamadaRedes {
                 this.pacoteArp.setMacDestino(pacote.getMacDestino());
                 this.pacoteArp.setOperacao(2);
                 arpRequest = false; // Isso é um arp reply
+
+                System.out.println("COMPUTADOR: " + this.getIpv4() + " RECEBEU UM PACOTE ARP DO ARP REPLY");
+                System.out.println("ORIGEN DO PACOTE: " + pacote.getIpV4Origem());
+                System.out.println("DESTINO DO PACOTE: " + pacote.getIpV4Destino());
+                System.out.println("MAC ADDRESS DESTINO " + pacote.getMacDestino());
+                System.out.println("--------------------------------------------------------");
                 this.ReceiveTransporte(mensagemOriginal, protocolo);
 
             } else { // SOU O COMPUTADOR DE DESTINO E PRECISO COLOCAR O MEU MACADDRESS NO ARP RECEBIDO
 
                 if (pacote.getIpV4Destino().equals(this.ipv4)) {
 
+                    System.out.println("COMPUTADOR: " + this.getIpv4() + " RECEBEU UM PACOTE ARP DO ARP REQUEST");
+                    System.out.println("ORIGEN DO PACOTE: " + pacote.getIpV4Origem());
+                    System.out.println("DESTINO DO PACOTE: " + pacote.getIpV4Destino());
+                    System.out.println("MAC ADDRESS DESTINO " + pacote.getMacDestino());
                     pacote.setMacDestino(this.enlace.getMacAddress());
                     pacote.setOperacao(2);
+
+                    System.out.println("ENVIANDO O ARP REPLY");
+                    System.out.println("--------------------------------------------------------");
+
                     this.SendEnlace(pacote);
 
+                } else {
+                    System.out.println("ESSE PACOTE ARP NÃO Ë PARA ESSE COMPUTADOR");
+                    System.out.println("--------------------------------------------------------");
                 }
             }
         } else if (mensagem instanceof PacoteIpv4) {
 
             PacoteIpv4 p = (PacoteIpv4) mensagem;
-            String informacao;
-            
+            String informacao, data;
+            int checksum;
+
             if (p.getIpv4Destino().equals(this.ipv4)) {
 
+                System.out.println("COMPUTADOR: " + this.getIpv4() + " RECEBEU UM PACOTE IPV4");
+                System.out.println("ORIGEN DO PACOTE: " + p.getIpv4Origem());
+                System.out.println("DESTINO DO PACOTE: " + p.getIpv4Destino());
+                System.out.println("CALCULANDO O CHECKSUM ");
+                checksum = p.getChecksum();
                 p.CalcularChecksum();
-            
+
                 if (p.getChecksum() == 0) { // Pacote nao perdeu nenhum informação
 
+                    data = new String(p.getDados(), StandardCharsets.UTF_8);
+                    System.out.println("RESULTADO DO CHECKSUM: 0");
+                    System.out.println("DADO DO PACOTE: " + data);
+                    p.setChecksum(checksum); // NAO PERDER O VALOR DO CHECKSUM CALCULADO NA SUA CRIAÇÃO
+                    System.out.println("VERIFICANDO SE TODOS OS PACOTES CHEGARAM");
                     CompletableFuture< byte[]> completableFuture = CompletableFuture.supplyAsync(() -> restruturarMensagem(p));
 
                     while (!completableFuture.isDone()) { // ENQUANTO A RESTRUTURAÇÃO NAO ESTA PRONTO
@@ -370,17 +425,27 @@ class CamadaRedes {
                     }
                     byte[] message = completableFuture.get();
 
-                    if (message != null) {
+                    if (message != null) { // TENHO TODOS OS PACOTES
+                        System.out.println("ENVIANDO PACOTE PARA A CAMADA DE TRANSPORTE");
                         informacao = new String(message, StandardCharsets.UTF_8);
                         this.SendTransporte(informacao);
+
+                    } else {
+
+                        System.out.println("NÃO CHEGOU TODOS OS PACOTES");
+                        System.out.println("--------------------------------------------------------");
                     }
 
                 } else { // Pacote Perdeu informação
-                    
-                    informacao = new String(p.getDados(), StandardCharsets.UTF_8);
-                    System.out.println("O pacote que tinha "+  informacao + "essa informação perdeu algum dado");
-                }
 
+                    informacao = new String(p.getDados(), StandardCharsets.UTF_8);
+                    System.out.println("O pacote ipv4 que tinha está informação " + informacao + "   perdeu algum dado durante o caminho.");
+                    System.out.println("--------------------------------------------------------");
+                }
+            } else {
+
+                System.out.println("ESSE PACOTE IPV4 NÃO É PARA ESTE COMPUTADOR: " + this.ipv4);
+                System.out.println("--------------------------------------------------------");
             }
         }
     }
@@ -423,5 +488,13 @@ class CamadaRedes {
 
     public String getMensagemOriginal() {
         return mensagemOriginal;
+    }
+
+    public ArrayList<ItensDaTabela> getTabelaDeRoteamento() {
+        return tabelaDeRoteamento;
+    }
+
+    public void setTabelaDeRoteamento(ArrayList<ItensDaTabela> tabelaDeRoteamento) {
+        this.tabelaDeRoteamento = tabelaDeRoteamento;
     }
 }

@@ -93,7 +93,8 @@ public class PacoteIpv4 implements Comparable< PacoteIpv4> {
             int offSet = 0;
 
             while (comprimentoAtual > mtu) {
-
+                
+                System.out.println("FRAGMENTANDO O PACOTE");
                 pacote = new PacoteIpv4(this.identificacao, this.restanteDaMensagem, this.ipv4Origem, this.ipv4Destino, this.protocolo, mtu);
 
                 if (PrimeiroPacoteDaFragmentação) {
@@ -124,10 +125,13 @@ public class PacoteIpv4 implements Comparable< PacoteIpv4> {
                     pacote.CalcularChecksum();
                     pacote.setEndereçoRoteador(this.endereçoRoteador);                    
                 }
+                
                 p.add(pacote);
                 TotalDeDados = TotalDeDados + (this.mtu - this.Hlen * 4);
                 comprimentoAtual = (comprimentoAtual - (this.mtu - this.Hlen * 4));
-
+                
+                
+                
             }    // Se saiu do while significa que é o último pacote da fragmentação
             if (TotalDeDados % 8 == 0) {
 
@@ -136,7 +140,7 @@ public class PacoteIpv4 implements Comparable< PacoteIpv4> {
 
                 offSet = TotalDeDados % 8;
             }
-
+            System.out.println("FRAGMENTANDO O PACOTE");
             pacote = new PacoteIpv4(this.identificacao, restanteDaMensagem, this.ipv4Origem, this.ipv4Destino, this.protocolo, this.mtu);
             pacote.setCanFragment(true);
             pacote.setIsLast(true);
@@ -149,7 +153,7 @@ public class PacoteIpv4 implements Comparable< PacoteIpv4> {
             pacote.CalcularChecksum();
             pacote.setEndereçoRoteador(this.endereçoRoteador);    
             p.add(pacote);
-
+            
         } // fora do else
         return p;
     }
@@ -453,9 +457,11 @@ public class PacoteIpv4 implements Comparable< PacoteIpv4> {
     }
 
     public static Integer[] convertIpToArrayOfInteger(String ip) {
-        List<String> splittedIp = Arrays.asList(ip.split("[.]"));
+        
+        List<String> splittedIp = Arrays.asList(ip.split("\\."));
         List<Integer> splittedIpIntegers = splittedIp.stream().map(Integer::valueOf).collect(Collectors.toList());
         return splittedIpIntegers.toArray(new Integer[0]);
+      
     }
 
     public char[] calculaSomahexa(int[] somaDec, int colunas) {

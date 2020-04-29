@@ -12,10 +12,12 @@ class Roteador implements Observer {
     ArrayList<CamadaFisica> listaDeBarramentos;
     PacoteIpv4 pacoteIpv4;
     String idBarramento;
+    boolean fizArpReply = false;
 
-    public Roteador(String ipv4, String macAddress, ArrayList<ItensDaTabela> tabelaDeRoteamento) {
+    public Roteador(String ipv4, String macAddress) {
 
-        this.tabelaDeRoteamento = tabelaDeRoteamento;
+        this.ipv4 = ipv4;
+        this.macAddress = macAddress;
         this.listaDeBarramentos = new ArrayList<>();
     }
 
@@ -29,9 +31,13 @@ class Roteador implements Observer {
             pacoteIpv4 = (PacoteIpv4) mensagem;
             
             for (CamadaFisica b : listaDeBarramentos) {
-
+                
+                
+                    
                 if (b.id.equals(this.getIdBarramento())) {
-
+                    System.out.println("--------------------------------------------------------");
+                    System.out.println("CRIANDO UM PACOTE ARP");
+                    this.fizArpReply  = false;
                     if (pacoteIpv4.getEndereçoRoteador() == null) { // Destino do arp é o destino do pacote
 
                         criarPacoteArp(1, this.getIpv4(), pacoteIpv4.getIpv4Destino(), this.getMacAddress(), "0");
@@ -40,6 +46,11 @@ class Roteador implements Observer {
 
                         criarPacoteArp(1, this.getIpv4(), pacoteIpv4.getEndereçoRoteador(), this.getMacAddress(), "0");
                     }
+                    System.out.println("ENVIANDO ARP REQUEST");
+                    System.out.println("ORIGEM DO PACOTE: " + this.pacoteArp.getIpV4Origem());
+                    System.out.println("DESTINO DO PACOTE: " + this.pacoteArp.getIpV4Destino());
+                    System.out.println("MAC ADDRESS DESTINO: " + this.pacoteArp.getMacDestino());
+                    System.out.println("--------------------------------------------------------");
                     b.notifyObserver(this.pacoteArp); // Envia o arp para o barramento destino
                 }
             }
@@ -53,7 +64,9 @@ class Roteador implements Observer {
                 for (CamadaFisica b : listaDeBarramentos) {
 
                     if (b.id.equals(this.getIdBarramento())) {
-
+                        
+                        System.out.println("ENVIANDO PACOTE IPV4 PARA O BARRAMENTO " + barramento);
+                        System.out.println("--------------------------------------------------------");
                         b.notifyObserver(pacoteIpv4);
                     }
                 }
@@ -61,11 +74,15 @@ class Roteador implements Observer {
             if (mensagem instanceof PacoteArp) { // Enviando um arp Reply
                 
                 pacoteArp = (PacoteArp) mensagem;
+                System.out.println("ENVIANDO O ARP REPLY");
+                System.out.println("--------------------------------------------------------");
                 
                 for (CamadaFisica ba : listaDeBarramentos) {
 
                     if (ba.getId().equals(barramento)) {
-
+                        
+                        System.out.println("QUE BARRAMENTO O ROTEADOR ESTA ENVIANDO O ARP REPLY: " + ba.getId());
+                        System.out.println("--------------------------------------------------------");
                         ba.notifyObserver(pacoteArp);
                     }
                 }
@@ -74,6 +91,8 @@ class Roteador implements Observer {
     }
     
     public void ReceiveData(Object mensagem, String idBarramento){
+        
+        
         PacoteArp pacoteArp;
         PacoteIpv4 pacoteIpv4;
 
@@ -81,20 +100,35 @@ class Roteador implements Observer {
 
             pacoteArp = (PacoteArp) mensagem;
 
-            if (pacoteArp.getOperacao() == 2 && pacoteArp.getIpV4Origem().equals(this.ipv4)) {  // Esse pacote ja é o arp reply, logo posso enviar meu pacote
-
+            if (pacoteArp.getOperacao() == 2 && pacoteArp.getIpV4Origem().equals(this.ipv4) && fizArpReply == false) {  // Esse pacote ja é o arp reply, logo posso enviar meu pacote
+              
+                System.out.println("ROTEADOR: " + this.getIpv4() + " RECEBEU UM PACOTE ARP DO ARP REPLY");
+                System.out.println("ORIGEN DO PACOTE: " + pacoteArp.getIpV4Origem());
+                System.out.println("DESTINO DO PACOTE: " + pacoteArp.getIpV4Destino());
+                System.out.println("MAC ADDRESS DESTINO " + pacoteArp.getMacDestino());
+                
                 pacoteArp.setMacDestino(pacoteArp.getMacDestino());
                 this.pacoteArp.setOperacao(2);
-                arpRequest = false; // Isso é um arp reply
-                this.SendData(this.pacoteIpv4, "oioiioio"); // Verificar A tabela de roteamento
+                arpRequest = false; // Isso é um arp reply               
+                fizArpReply = true;
+                this.SendData(this.pacoteIpv4, idBarramento); // Verificar A tabela de roteamento
 
             } else { // SOU O COMPUTADOR DE DESTINO E PRECISO COLOCAR O MEU MACADDRESS NO ARP RECEBIDO
 
                 if (pacoteArp.getIpV4Destino().equals(this.ipv4)) {
 
+                    
+                    System.out.println("ROTEADOR: " + this.getIpv4() + " RECEBEU UM PACOTE ARP DO ARP REQUEST");
+                    System.out.println("ORIGEN DO PACOTE: " + pacoteArp.getIpV4Origem());
+                    System.out.println("DESTINO DO PACOTE: " + pacoteArp.getIpV4Destino());
+                    System.out.println("MAC ADDRESS DESTINO " + pacoteArp.getMacDestino());                  
+                    
                     pacoteArp.setMacDestino(this.getMacAddress());
                     pacoteArp.setOperacao(2);
                     this.SendData(pacoteArp, idBarramento); // Enviar a resposta para o mesmo barramento
+                }
+                if(fizArpReply == false){
+                    System.out.println("ESSE PACOTE ARP NAO É PARA ESSTE ROTEADOR: " + this.getIpv4());
                 }
             }
 
@@ -103,32 +137,61 @@ class Roteador implements Observer {
             pacoteIpv4 = (PacoteIpv4) mensagem;
             String informacao[];
             String problema;
+            int checksum;
 
-            if (pacoteIpv4.getEndereçoRoteador().equals(this.ipv4)) {
-
+            if (pacoteIpv4.getEndereçoRoteador() != null && pacoteIpv4.getEndereçoRoteador().equals(this.ipv4)) {
+                
+                checksum = pacoteIpv4.getChecksum();
                 pacoteIpv4.CalcularChecksum();
-
+                
+                
+                
+                System.out.println("ROTEADOR: " + this.getIpv4() + " RECEBENDO UM PACOTE IPV4");
+                System.out.println("ORIGEN DO PACOTE: " + pacoteIpv4.getIpv4Origem());
+                System.out.println("DESTINO DO PACOTE: " + pacoteIpv4.getIpv4Destino());
+                System.out.println("CALCULANDO O CHECKSUM ");
+                
                 if (pacoteIpv4.getChecksum() == 0) { // Pacote nao perdeu nenhum informação
-
+                    
+                    System.out.println("RESULTADO DO CHECKSUM: 0" );
+                    pacoteIpv4.setChecksum(checksum); // Não perder o valor original do checksum
+                    
                     informacao = encontrarDestino(pacoteIpv4.getIpv4Destino());
-
-                    if (informacao[0].equals("unreachable")) {
+                    
+                    if(informacao[0] == null) { //  PRECISO ENVIAR O PACOTE PARA UM BARRAMENTO
+                        System.out.println("PRECISO FAZER UM ENTREGA INDIRETA");
+                   
+                        this.pacoteIpv4 = pacoteIpv4;        // Salva o pacote que devo enviar , pois preciso fazer o arp antes
+                        this.idBarramento = informacao[1];   // Guarda o id do barramento que devo mandar o arp e o pacote
+                        pacoteIpv4.setEndereçoRoteador(null); // atualizo o novo endereco de um roteador se tiver.
+                        this.arpRequest = true;                   // seto que preciso fazer o arp;
+                        this.SendData(pacoteIpv4, informacao[1]); 
+                                       
+                    } else if (informacao[0].equals("unreachable")) {
 
                         System.out.println("Host inalcançavel");
+                        System.out.println("--------------------------------------------------------");
 
-                    } else {
+                    }else{ // PRECISO ENVIAR O PACOTE PARA OUTRO ROTEADOR
+                        System.out.println("ENVIAR PACOTE PARA OUTRO ROTEADOR");
                         this.pacoteIpv4 = pacoteIpv4;        // Salva o pacote que devo enviar , pois preciso fazer o arp antes
                         this.idBarramento = informacao[1];   // Guarda o id do barramento que devo mandar o arp e o pacote
                         pacoteIpv4.setEndereçoRoteador(informacao[0]); // atualizo o novo endereco de um roteador se tiver.
                         this.arpRequest = true;                   // seto que preciso fazer o arp;
                         this.SendData(pacoteIpv4, informacao[1]); 
-                    }
+                    } 
 
                 } else { // Pacote Perdeu informação
-
+                    
                     problema = new String(pacoteIpv4.getDados(), StandardCharsets.UTF_8);
+                    
                     System.out.println("O pacote que tinha " + problema + "essa informação perdeu algum dado");
+                    System.out.println("--------------------------------------------------------");
                 }
+            }else{
+                
+                System.out.println("ESSE PACOTE IPV4 NÃO É PARA O ROTEADOR: " + this.getIpv4());
+                System.out.println("--------------------------------------------------------");
             }
         }
     }
@@ -139,11 +202,15 @@ class Roteador implements Observer {
     }
 
     String[] encontrarDestino(String ipv4Destino) {
+        
+        System.out.println("VERIFCANDO A TABELA DE ROTEAMENTO");
         String resultado;
         String retorno[] = new String[2];
         for (ItensDaTabela iten : tabelaDeRoteamento) {
 
-            resultado = compararMascarasComDestino(iten.getMascara(), ipv4Destino);
+            
+            resultado = compararMascarasComDestino(iten.getMascara(), ipv4Destino);            
+            
             if (iten.getEnderecoDeRede().compareTo(resultado) == 0) {
                 retorno[0] = iten.getProximoSalto();
                 retorno[1] = iten.getInterFace();
@@ -187,8 +254,7 @@ class Roteador implements Observer {
             } else {
                 resultadoAND = resultadoAND + resultado[i];
             }
-        }
-        System.out.println("Rotador " + resultadoAND);
+        }        
 
         return resultadoAND;
     }
@@ -238,4 +304,29 @@ class Roteador implements Observer {
     public void Receive(Object mensagem) { // Verifica o checksum e verifica a tabela de roteamento
 
     }
+
+    public ArrayList<ItensDaTabela> getTabelaDeRoteamento() {
+        return tabelaDeRoteamento;
+    }
+
+    public void setTabelaDeRoteamento(ArrayList<ItensDaTabela> tabelaDeRoteamento) {
+        this.tabelaDeRoteamento = tabelaDeRoteamento;
+    }
+
+    public ArrayList<CamadaFisica> getListaDeBarramentos() {
+        return listaDeBarramentos;
+    }
+
+    public void setListaDeBarramentos(ArrayList<CamadaFisica> listaDeBarramentos) {
+        this.listaDeBarramentos = listaDeBarramentos;
+    }
+
+    public boolean isFizArpReply() {
+        return fizArpReply;
+    }
+
+    public void setFizArpReply(boolean fizArpReply) {
+        this.fizArpReply = fizArpReply;
+    }
+    
 }

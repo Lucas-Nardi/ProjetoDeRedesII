@@ -15,6 +15,7 @@ class CamadaAplicacao {
        
         
         System.out.println("APLICAÇÃO RECEBEU: " + mensagem);
+        System.out.println("--------------------------------------------------------");
     }
 
     public CamadaTransporte getTransporte() {

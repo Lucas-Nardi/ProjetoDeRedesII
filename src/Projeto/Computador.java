@@ -2,8 +2,6 @@ package Projeto;
 
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 
 public class Computador  implements Observer{
@@ -13,12 +11,12 @@ public class Computador  implements Observer{
     private CamadaTransporte camadaTransporte;
     private CamadaAplicacao camadaAplicacao;
 
-    public Computador(CamadaFisica barramento, String iPv4, String macAddress, ArrayList<ItensDaTabela> tabelaDeRoteamento) {
+    public Computador(CamadaFisica barramento, String iPv4, String macAddress, int mascara,int mtu) {
     
         this.camadaAplicacao = new CamadaAplicacao();
         this.camadaTransporte = new CamadaTransporte();
-        this.camadaRedes = new CamadaRedes(iPv4,26,tabelaDeRoteamento);        
-        this.camadaEnlace = new CamadaEnlace(barramento, macAddress,22);
+        this.camadaRedes = new CamadaRedes(iPv4,mascara);        
+        this.camadaEnlace = new CamadaEnlace(barramento, macAddress,mtu);
         
         this.camadaAplicacao.setTransporte(camadaTransporte);
         
