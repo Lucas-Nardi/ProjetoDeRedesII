@@ -206,12 +206,20 @@ class Roteador implements Observer {
         System.out.println("VERIFCANDO A TABELA DE ROTEAMENTO");
         String resultado;
         String retorno[] = new String[2];
-        for (ItensDaTabela iten : tabelaDeRoteamento) {
-
+        for (ItensDaTabela iten : tabelaDeRoteamento) {            
+            
+            if(iten.getEnderecoDeRede().equals("0.0.0.0")){
+                    
+                System.out.println("PROXIMO SALTO SERÁ PARA O GATEWAY PADRÃO");
+                retorno[0] = iten.getProximoSalto();
+                retorno[1] = iten.getInterFace();
+                return retorno;
+            }
             
             resultado = compararMascarasComDestino(iten.getMascara(), ipv4Destino);            
             
             if (iten.getEnderecoDeRede().compareTo(resultado) == 0) {
+                
                 retorno[0] = iten.getProximoSalto();
                 retorno[1] = iten.getInterFace();
                 return retorno;
