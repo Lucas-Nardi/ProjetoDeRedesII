@@ -288,6 +288,81 @@ public class FrontEnd {
             }
         } while (true);
     }
+    
+    public static void MenuListar(){
+        Scanner in = new Scanner(System.in);
+        do {
+            System.out.println("listar:");
+            System.out.println("1) listar pc");
+            System.out.println("2) listar roteador");
+            System.out.println("3) listar barramento");
+            System.out.println("9) voltar");
+            System.out.print(">");
+            int option = in.nextInt();
+            System.out.println(option);
+
+            switch (option) {
+                case 1: {
+                    listarPc();
+                    break;
+                }
+                case 2: {
+                    listarRoteador();
+                    break;
+                }
+                case 3: {
+                    listarBarramento();
+                    break;
+                }
+                case 9: {
+                    return;
+                }
+                default: {
+                    System.out.println("input não suportado");
+                }
+            }
+        } while (true);
+    }
+    
+    public static void listarPc(){
+        System.out.println("listando pcs");
+        System.out.println("| barramento | endereço ipv4 | endereço mac | mascara | mtu |");
+        for(Computador cp: listaComputadores){
+            System.out.println("| "+cp.getCamadaEnlace().getFisica().getId() + " | " +cp.getCamadaRedes().getIpv4() + " | "+cp.getCamadaEnlace().getMacAddress()
+            + " | "+cp.getCamadaRedes().getMascara() + " | "+cp.getCamadaEnlace().getMtu() + " |");
+            System.out.println("        sua tabela de roteamento");
+            System.out.println("        | mascara de rede | endereço ipv4 | next hop | id do barramento |");
+            for(ItensDaTabela item: cp.getCamadaRedes().getTabelaDeRoteamento()){
+                System.out.println("        | "+item.getMascara() + " | "+item.getEnderecoDeRede() + " | "+item.getProximoSalto() + " | "+item.getInterFace()
+                + " |");
+            }
+        }
+    }
+    
+    public static void listarRoteador(){
+        System.out.println("listando roteadores");
+        System.out.println("| endereço ipv4 | endereço mac |");
+        for(Roteador cp: listaRoteadores){
+            System.out.println("| " +cp.getIpv4() + " | "+cp.getMacAddress() + " |");
+            System.out.println("        sua tabela de roteamento");
+            System.out.println("        | mascara de rede | endereço ipv4 | next hop | id do barramento |");
+            for(ItensDaTabela item: cp.getTabelaDeRoteamento()){
+                System.out.println("        | "+item.getMascara() + " | "+item.getEnderecoDeRede() + " | "+item.getProximoSalto() + " | "+item.getInterFace()
+                + " |");
+            }
+            System.out.println("        sua lista de barramento");
+            for(CamadaFisica item: cp.getListaDeBarramentos()){
+                System.out.println("        - "+item.getId());
+            }
+        }
+    }
+    
+    public static void listarBarramento(){
+        System.out.println("listando barramentos");
+            for(CamadaFisica item: listaBarramentos){
+                System.out.println(" - "+item.getId());
+            }
+    }
 
     public static void main(String[] args) {
 
@@ -295,6 +370,7 @@ public class FrontEnd {
         do {
             System.out.println("Selecione a opção que deseja:");
             System.out.println("1) criar");
+            System.out.println("2) listar");
             System.out.println("9) sair");
             System.out.print(">");
             int option = in.nextInt();
@@ -305,6 +381,11 @@ public class FrontEnd {
                     MenuCriar();
                     break;
                 }
+                case 2: {
+                    MenuListar();
+                    break;
+                }
+                    
                 case 9: {
                     System.out.println("bye bye");
                     System.exit(0);
@@ -388,7 +469,7 @@ public class FrontEnd {
 //        
 //        
 //        
-//        Mensagem mensagem  = new Mensagem("Abacaxi","192.168.25.2");
+//        Mensagem mensagem  = new Mensagem("como foi seu dia hoje?","192.168.25.2");
 //        comp1.Send(mensagem);
     }
 }

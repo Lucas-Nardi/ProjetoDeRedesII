@@ -224,7 +224,7 @@ class CamadaRedes {
 
                     listaPacotes.add(p);
 
-                    Collections.sort(listaPacotes);
+                    //Collections.sort(listaPacotes);
 
                     for (int i = 0; i < listaPacotes.size(); i++) {
 
@@ -244,7 +244,7 @@ class CamadaRedes {
                 } else { // Adicionar pacote na lista de pacote
 
                     listaPacotes.add(p);
-                    Collections.sort(listaPacotes);
+                    //Collections.sort(listaPacotes);
                 }
 
             } else { // Não tenho mensagem desse pacote ainda
